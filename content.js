@@ -3,7 +3,7 @@
  */
 
 // Selected fields schema for TOON & JSON export
-const MESSAGE_KEYS = ['id', 'author', 'time', 'link', 'reply_to', 'attachments', 'content'];
+const MESSAGE_KEYS = ['id', 'author', 'time', 'link', 'reply_to', 'reactions', 'attachments', 'content'];
 
 /**
  * Extracts clean structured messages currently visible in the active channel/thread
@@ -52,13 +52,13 @@ function extractDiscordMessages(options = {}) {
       };
     }
 
-    // Attachments (Images, Videos, Embeds, File links)
+    // Attachments (Images, Videos, Embeds, File links - excluding avatar icons)
     const attachments = [];
     const mediaEls = el.querySelectorAll('a[class*="originalLink_"], a[target="_blank"][href*="cdn.discordapp.com"], img[src*="cdn.discordapp.com"]');
     mediaEls.forEach(m => {
       let url = m.href || m.src;
+      // Keep real media attachments (exclude user avatars and inline emojis from attachments list)
       if (url && !url.includes('/emojis/') && !url.includes('/avatars/')) {
-        // Clean query params or keep full CDN URL
         attachments.push(url);
       }
     });
@@ -71,18 +71,44 @@ function extractDiscordMessages(options = {}) {
       }
     });
 
-    // Content text (Preserve code blocks, markdown text)
+    // Content text (Preserve emojis, custom emojis :name:, code blocks, and markdown)
     const contentEl = el.querySelector('div[id^="message-content-"], div[class*="messageContent_"]');
     let content = '';
     if (contentEl) {
-      content = contentEl.innerText.trim();
+      // Clone element so we can safely normalize custom emoji imgs without modifying DOM
+      const clone = contentEl.cloneNode(true);
+
+      // In Discord, custom emojis are rendered as <img class="emoji" alt=":smile:" src="...">
+      const emojiImgs = clone.querySelectorAll('img[class*="emoji"], img[alt^=":"]');
+      emojiImgs.forEach(img => {
+        const alt = img.getAttribute('alt') || '';
+        if (alt) {
+          const textNode = document.createTextNode(alt);
+          img.parentNode.replaceChild(textNode, img);
+        }
+      });
+
+      content = clone.innerText.trim();
     }
+
+    // Message Reactions (including emoji reactions like 👍 2, ❤️ 5, :custom_emoji: 1)
+    const reactions = [];
+    const reactionEls = el.querySelectorAll('div[class*="reaction_"], [class*="reactionInner_"]');
+    reactionEls.forEach(r => {
+      const emojiImg = r.querySelector('img[class*="emoji"]');
+      const emojiText = emojiImg ? emojiImg.getAttribute('alt') : (r.querySelector('[class*="reactionEmoji_"]')?.textContent || '');
+      const count = r.querySelector('[class*="reactionCount_"]')?.textContent || '1';
+      if (emojiText) {
+        reactions.push(`${emojiText} ${count}`.trim());
+      }
+    });
 
     messages.push({
       id: rawId,
       author,
       time: timestamp,
       link: msgLink,
+      reactions: reactions.length > 0 ? reactions.join(', ') : null,
       reply_to: replyTo ? `${replyTo.author}: ${replyTo.text}` : null,
       attachments: attachments.length > 0 ? attachments : null,
       content
