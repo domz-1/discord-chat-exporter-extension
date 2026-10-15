@@ -1,0 +1,11 @@
+{
+  "name": "discord-chat-exporter-extension",
+  "version": "1.0.0",
+  "description": "Chrome/Brave extension to export Discord chat messages as TOON, JSON, and Markdown",
+  "scripts": {
+    "test": "bun test/toon.test.js"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

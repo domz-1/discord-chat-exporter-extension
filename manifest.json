@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Discord Chat Exporter (TOON & JSON)",
+  "version": "1.0.0",
+  "description": "Export Discord messages, threads, replies, and attachments as TOON, JSON, or Markdown for LLM & Jira bug reporting.",
+  "permissions": [
+    "activeTab",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://discord.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://discord.com/*"],
+      "js": ["toon.js", "content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
