@@ -1,57 +1,36 @@
-# Discord Chat Exporter Extension (WXT · Chrome / Brave / Firefox)
+# Discord Hacker · Chat Exporter & Power Tools (WXT · Chrome / Brave / Firefox)
 
-A **WXT + TypeScript** browser extension with a **Liquid Glass** UI to multi-select, batch-forward, and export Discord messages, threads, replies, and attachments into **TOON** (Token-Oriented Object Notation), **JSON**, and **Markdown** — plus hide muted channels and DMs completely.
+A **WXT + TypeScript** browser extension with a **Liquid Glass** UI that upgrades Discord Web with multi-select, batch forwarding, instant TOON/JSON/Markdown export for LLMs, 1-click blue letter Word Reacts, and muted channel/DM hiding.
 
 ## ✨ Features
 
-- **Multi-Select Messages**: Hover any message to toggle its glass checkbox, or `Shift+Click` for range selection. Scroll-safe in-memory cache preserves selections across Discord's virtualized scroll list and exports in chronological snowflake order.
-- **Native Multi-Forward**: Click **Forward Selected** to open Discord's own native **Forward To** modal and forward all selected messages in chronological order via Discord's real `message_reference` (`type: 1`) flow.
-- **Minimal Hover-Only Liquid Glass Dock**: Collapses to a subtle `14px` translucent pearl dot in the bottom-right corner and blooms into the full Liquid Glass panel only when hovered.
-- **Hide Muted Channels & DMs**: Automatically hides muted server channels, muted categories, and muted Direct Messages / Group DMs (with a synced toggle in both the dock and popup).
-- **TOON / JSON / Markdown Export**: Saves 30%–60% LLM tokens with TOON serialization for bug audits and Jira tickets.
+- **Multi-Select Messages + `Ctrl+C` Shortcut**: Hover any message to toggle its glass checkbox, or `Shift+Click` for range selection. Scroll-safe cache preserves selections across Discord's virtualized list, exports in chronological order, and lets you press **`Ctrl+C` / `Cmd+C`** (English or Arabic keyboard) to copy selected messages as **TOON** instantly.
+- **1-Click Copy on Every Message**: Built-in copy button right inside Discord's native message hover bar (`👍 ❤️ | ↩ ↪ ••• | 📋`) — also extracts inline `message.txt` file preview content.
+- **Native Multi-Forward**: Click **Forward Selected** to open Discord's own native **Forward To** modal and forward all selected messages together in chronological order.
+- **Blue Letter Word React (`A+`)**: Click `A+` on any message to open an inline Liquid Glass popover, type any word with letters (`A–Z`) and numbers (`0–9` / `٠–٩`), preview the blue emojis live, and press `Enter` to react them onto the message in order (`Shift+Click` to instant-repeat your last word).
+- **Hide Muted Channels & DMs**: Automatically hides muted server channels, muted categories, and muted Direct Messages / Group DMs (with a synced toggle in both the hover dock and popup).
+- **Hover-Only Liquid Glass Dock**: Collapses to a minimal `14px` translucent pearl dot in the bottom-right corner and blooms into a smoked Liquid Glass panel only when hovered.
+- **TOON / JSON / Markdown Export**: Saves 30%–60% LLM tokens with TOON serialization for bug audits, QA reviews, and Jira tickets.
 
 ---
 
-## 🛠️ Development & Build (WXT)
+## 🛠️ Build & Load in Brave / Chrome
 
 ```bash
 bun install
-bun run dev        # Hot-reload development build
-bun run build      # Production build -> .output/chrome-mv3
-bun run typecheck  # Strict TypeScript check
-bun test           # Run unit tests
+bun run build
 ```
 
----
+1. Open `brave://extensions/` (or `chrome://extensions/`).
+2. Enable **Developer mode** (top right).
+3. Click **Load unpacked** and select:
+   `.output/chrome-mv3`
+4. Refresh [Discord Web](https://discord.com/channels/@me).
 
-## 📦 How to Load in Brave / Chrome
+### Dev & Testing
 
-1. Run `bun run build`.
-2. Open `brave://extensions/` (or `chrome://extensions/`).
-3. Enable **Developer mode** (top right).
-4. Click **Load unpacked** and select:
-   `/home/adham/projects/adham/discord-chat-exporter-extension/.output/chrome-mv3`
-5. Refresh [Discord Web](https://discord.com/channels/@me).
-
----
-
-## 📁 Project Structure
-
-```text
-src/
-├── entrypoints/
-│   ├── discord-bridge.content.ts  # MAIN-world hook for native multi-forward
-│   ├── content.ts                 # Isolated content script (UI, selection, muted filter)
-│   └── popup/                     # Liquid Glass extension popup
-├── lib/
-│   ├── extractor.ts               # Message parser, snowflake sort, Markdown formatter
-│   ├── forward.ts                 # Discord Forward payload & snowflake nonce helpers
-│   ├── muted.ts                   # Muted channels, categories & DMs detector/observer
-│   ├── storage.ts                 # Synced browser.storage helpers
-│   ├── toon.ts                    # TOON serializer & parser
-│   └── types.ts                   # Shared TypeScript interfaces
-└── ui/
-    ├── content.css                # Liquid Glass styles + muted channel hiding rules
-    ├── dock.ts                    # Tiny glass dot -> hover expandable dock
-    └── selection.ts               # Multi-select checkboxes & scroll-safe cache
+```bash
+bun run dev        # Hot-reload development build
+bun run typecheck  # Strict TypeScript check
+bun test           # Run unit tests
 ```
