@@ -70,6 +70,31 @@ export function computeRangeIds(
   return orderedIds.slice(from, to + 1);
 }
 
+export interface ShortcutCopyCheck {
+  ctrlKey: boolean;
+  metaKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  key: string;
+  code?: string;
+  selectedCount: number;
+  hasTextSelection: boolean;
+}
+
+/**
+ * Determines whether a Ctrl+C / Cmd+C keypress should copy selected Discord messages as TOON.
+ * Supports non-Latin keyboard layouts (e.g. Arabic) via `code === 'KeyC'`, and yields to
+ * native copy whenever the user has highlighted text on the page.
+ */
+export function shouldTriggerShortcutCopy(opts: ShortcutCopyCheck): boolean {
+  if (opts.selectedCount <= 0) return false;
+  if (!(opts.ctrlKey || opts.metaKey) || opts.shiftKey || opts.altKey) return false;
+  const isCKey = opts.code === 'KeyC' || opts.key.toLowerCase() === 'c';
+  if (!isCKey) return false;
+  if (opts.hasTextSelection) return false;
+  return true;
+}
+
 /**
  * Formats extracted messages into clean Markdown.
  */
@@ -226,6 +251,22 @@ export function extractSingleMessage(
       }
     });
     content = (clone.innerText || clone.textContent || '').trim();
+  }
+
+  // Inline text file previews (e.g. message.txt cards rendered by Discord)
+  const textAttachEls = el.querySelectorAll('[class*="textContainer_"] code, [class*="textContainer_"] pre');
+  const seenBlocks = new Set<string>();
+  const textBlocks: string[] = [];
+  textAttachEls.forEach((block) => {
+    if (block.tagName === 'PRE' && block.querySelector('code')) return;
+    const text = (block.textContent || '').trim();
+    if (text && !seenBlocks.has(text)) {
+      seenBlocks.add(text);
+      textBlocks.push(text);
+    }
+  });
+  if (textBlocks.length > 0) {
+    content = content ? `${content}\n\n${textBlocks.join('\n\n')}` : textBlocks.join('\n\n');
   }
 
   // Reactions

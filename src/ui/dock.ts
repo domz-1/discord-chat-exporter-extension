@@ -1,15 +1,18 @@
 import type { ExportFormat } from '../lib/types';
+import { DEFAULT_REACT_WORD, wordToReactionEmojis } from '../lib/word-react';
 
 export interface DockCallbacks {
   onCopy: (format: ExportFormat) => void;
   onForward: () => void;
   onClear: () => void;
   onToggleMuted: (enabled: boolean) => void;
+  onReactWordChange: (word: string) => void;
 }
 
 export interface DockViewState {
   selectedCount: number;
   hideMutedChannels: boolean;
+  reactWord: string;
   isForwarding?: boolean;
 }
 
@@ -17,7 +20,11 @@ export class LiquidGlassDock {
   private root: HTMLDivElement | null = null;
   private statusTimer: ReturnType<typeof setTimeout> | null = null;
   private hoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
-  private lastState: DockViewState = { selectedCount: 0, hideMutedChannels: true };
+  private lastState: DockViewState = {
+    selectedCount: 0,
+    hideMutedChannels: true,
+    reactWord: DEFAULT_REACT_WORD,
+  };
 
   mount(callbacks: DockCallbacks): void {
     if (document.getElementById('discord-exporter-dock')) {
@@ -83,6 +90,23 @@ export class LiquidGlassDock {
           </div>
         </div>
 
+        <div class="dce-word-box">
+          <div class="dce-word-header">
+            <span class="dce-word-label">Word React</span>
+            <span class="dce-word-preview" id="dce-word-preview">🇩 🇴 🇳 🇪</span>
+          </div>
+          <input
+            type="text"
+            class="dce-word-input"
+            id="dce-react-word-input"
+            maxlength="24"
+            placeholder="e.g. DONE, A7A, 100"
+            value="DONE"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
         <label class="dce-toggle-row" for="dce-toggle-muted">
           <span class="dce-toggle-label">
             <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
@@ -99,6 +123,8 @@ export class LiquidGlassDock {
 
         <div class="dce-footer" id="exporter-status">Hover msgs to select · Shift+Click range</div>
       </div>
+
+      <div class="dce-toast" id="dce-toast" role="status" aria-live="polite"></div>
 
       <div class="dce-dot-hit" aria-label="Hover to open Discord Exporter">
         <div class="dce-dot">
@@ -121,12 +147,39 @@ export class LiquidGlassDock {
     const scheduleCloseDock = () => {
       if (this.hoverCloseTimer) clearTimeout(this.hoverCloseTimer);
       this.hoverCloseTimer = setTimeout(() => {
+        const wordInput = dock.querySelector<HTMLInputElement>('#dce-react-word-input');
+        if (wordInput && document.activeElement === wordInput) return;
         dock.classList.remove('dce-open');
       }, 220);
     };
 
     dock.addEventListener('mouseenter', openDock);
     dock.addEventListener('mouseleave', scheduleCloseDock);
+
+    const wordInput = dock.querySelector<HTMLInputElement>('#dce-react-word-input');
+    if (wordInput) {
+      // Stop Discord's global keydown listener from hijacking typing into chat box
+      ['keydown', 'keypress', 'keyup'].forEach((evtName) => {
+        wordInput.addEventListener(evtName, (e) => {
+          e.stopPropagation();
+          if (evtName === 'keydown' && (e as KeyboardEvent).key === 'Enter') {
+            wordInput.blur();
+            this.showStatus(`Word React: "${wordInput.value.trim() || DEFAULT_REACT_WORD}"`);
+          }
+        });
+      });
+
+      wordInput.addEventListener('input', () => {
+        this.renderWordPreview(wordInput.value);
+        callbacks.onReactWordChange(wordInput.value);
+      });
+
+      wordInput.addEventListener('blur', () => {
+        if (!dock.matches(':hover')) {
+          scheduleCloseDock();
+        }
+      });
+    }
 
     dock.querySelector('#btn-copy-toon')?.addEventListener('click', () => callbacks.onCopy('toon'));
     dock.querySelector('#btn-copy-json')?.addEventListener('click', () => callbacks.onCopy('json'));
@@ -177,6 +230,12 @@ export class LiquidGlassDock {
       mutedToggle.checked = hideMutedChannels;
     }
 
+    const wordInput = this.root.querySelector<HTMLInputElement>('#dce-react-word-input');
+    if (wordInput && document.activeElement !== wordInput && wordInput.value !== state.reactWord) {
+      wordInput.value = state.reactWord;
+    }
+    this.renderWordPreview(state.reactWord);
+
     const statusEl = this.root.querySelector<HTMLElement>('#exporter-status');
     if (
       statusEl &&
@@ -185,26 +244,41 @@ export class LiquidGlassDock {
     ) {
       statusEl.textContent =
         selectedCount > 0
-          ? `${selectedCount} selected · Copy or Forward`
+          ? `${selectedCount} selected · Ctrl+C for TOON`
           : 'Hover msgs to select · Shift+Click range';
     }
   }
 
   showStatus(msg: string, isError = false, persist = false): void {
     const statusEl = this.root?.querySelector<HTMLElement>('#exporter-status');
-    if (!statusEl) return;
+    const toastEl = this.root?.querySelector<HTMLElement>('#dce-toast');
+    if (statusEl) {
+      statusEl.textContent = msg;
+      statusEl.classList.toggle('dce-status-error', isError);
+      statusEl.classList.toggle('dce-status-ok', !isError);
+    }
 
-    statusEl.textContent = msg;
-    statusEl.classList.toggle('dce-status-error', isError);
-    statusEl.classList.toggle('dce-status-ok', !isError);
+    if (toastEl) {
+      toastEl.textContent = msg;
+      toastEl.classList.toggle('dce-toast-error', isError);
+      toastEl.classList.add('dce-toast-visible');
+    }
 
     if (this.statusTimer) clearTimeout(this.statusTimer);
     if (!persist) {
       this.statusTimer = setTimeout(() => {
-        statusEl.classList.remove('dce-status-error', 'dce-status-ok');
+        statusEl?.classList.remove('dce-status-error', 'dce-status-ok');
+        toastEl?.classList.remove('dce-toast-visible', 'dce-toast-error');
         this.update(this.lastState);
-      }, 2800);
+      }, 2400);
     }
+  }
+
+  private renderWordPreview(word: string): void {
+    const previewEl = this.root?.querySelector<HTMLElement>('#dce-word-preview');
+    if (!previewEl) return;
+    const emojis = wordToReactionEmojis(word);
+    previewEl.textContent = emojis.length ? emojis.join(' ') : '—';
   }
 
   unmount(): void {

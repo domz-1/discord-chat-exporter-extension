@@ -130,6 +130,84 @@ body.dce-has-selection .dce-msg-item:hover > .dce-select-btn {
     inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
+/* 1-click Copy & Word React buttons inside Discord's native message hover action bar */
+.dce-msg-copy-btn,
+.dce-msg-react-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #b5bac1;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: auto 2px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease,
+    transform 0.12s ease,
+    box-shadow 0.14s ease;
+}
+
+.dce-msg-copy-btn svg,
+.dce-msg-react-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.dce-msg-copy-btn:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(154, 192, 255, 0.24) 0%,
+    rgba(96, 118, 255, 0.18) 100%
+  );
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.dce-msg-react-btn:hover {
+  background: linear-gradient(
+    145deg,
+    rgba(250, 198, 110, 0.26) 0%,
+    rgba(244, 114, 182, 0.22) 100%
+  );
+  color: #fff7ed;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.dce-msg-copy-btn:active,
+.dce-msg-react-btn:active {
+  transform: scale(0.92);
+}
+
+.dce-msg-react-btn.dce-reacting {
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.2);
+  animation: dce-pulse 0.8s ease-in-out infinite;
+}
+
+.dce-msg-copy-btn.dce-copied,
+.dce-msg-react-btn.dce-copied {
+  color: #6ee7b7;
+  background: rgba(52, 211, 153, 0.18);
+}
+
+@keyframes dce-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(0.92);
+  }
+}
+
 /* ============================================================================
  * 3. Floating Tiny Liquid Glass Dot -> Hover Expandable Panel
  * ========================================================================== */
@@ -497,6 +575,71 @@ body.dce-has-selection .dce-msg-item:hover > .dce-select-btn {
   color: rgba(255, 255, 255, 0.94);
 }
 
+/* Word React customizer inside Liquid Glass dock */
+.dce-word-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.dce-word-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.dce-word-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.dce-word-preview {
+  font-size: 12px;
+  line-height: 1;
+  max-width: 148px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.dce-word-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(8, 11, 18, 0.56);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  outline: none;
+  user-select: text;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.dce-word-input::placeholder {
+  color: rgba(255, 255, 255, 0.36);
+  font-weight: 500;
+  letter-spacing: normal;
+}
+
+.dce-word-input:focus {
+  border-color: rgba(250, 204, 128, 0.65);
+  background: rgba(8, 11, 18, 0.78);
+  box-shadow: 0 0 0 2px rgba(250, 204, 128, 0.18);
+}
+
 .dce-toggle-row {
   position: relative;
   display: flex;
@@ -598,6 +741,49 @@ body.dce-has-selection .dce-msg-item:hover > .dce-select-btn {
   font-weight: 600;
 }
 
+/* Floating Liquid Glass toast shown on Ctrl+C / quick-copy even while dock is collapsed */
+.dce-toast {
+  position: absolute;
+  bottom: 32px;
+  right: 0;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #a7f3d0;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(110, 231, 183, 0.1) 100%),
+    rgba(14, 17, 26, 0.88);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(134, 239, 172, 0.36);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(6px) scale(0.94);
+  transition: opacity 0.18s ease, transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.18s ease;
+}
+
+.dce-toast.dce-toast-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.dce-toast.dce-toast-error {
+  color: #fecaca;
+  border-color: rgba(252, 165, 165, 0.4);
+}
+
+.dce-dock.dce-open .dce-toast {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
 /* ============================================================================
  * 5. Multi-Forward Banner inside Discord's Native Forward Dialog
  * ========================================================================== */
@@ -631,4 +817,130 @@ body.dce-has-selection .dce-msg-item:hover > .dce-select-btn {
   background: #6ee7b7;
   box-shadow: 0 0 10px rgba(110, 231, 183, 0.85);
   flex-shrink: 0;
+}
+
+/* ============================================================================
+ * 6. Inline Liquid Glass Word React Popover (opens directly at the message)
+ * ========================================================================== */
+
+.dce-react-popover {
+  position: fixed;
+  z-index: 1000000;
+  width: 264px;
+  padding: 11px 12px 10px;
+  border-radius: 18px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  color: rgba(255, 255, 255, 0.96);
+  background:
+    linear-gradient(
+      152deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.03) 48%,
+      rgba(250, 204, 128, 0.08) 100%
+    ),
+    rgba(14, 17, 26, 0.88);
+  -webkit-backdrop-filter: blur(36px) saturate(190%);
+  backdrop-filter: blur(36px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 20px 46px rgba(0, 0, 0, 0.62),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.34);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: dce-pop-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes dce-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.dce-rp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dce-rp-title {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: rgba(255, 255, 255, 0.88);
+  flex-shrink: 0;
+}
+
+.dce-rp-preview {
+  font-size: 13px;
+  line-height: 1;
+  max-width: 158px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dce-rp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dce-rp-input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 11, 18, 0.68);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  outline: none;
+}
+
+.dce-rp-input:focus {
+  border-color: rgba(250, 204, 128, 0.72);
+  box-shadow: 0 0 0 2px rgba(250, 204, 128, 0.2);
+}
+
+.dce-rp-go {
+  appearance: none;
+  border: 1px solid rgba(250, 214, 148, 0.48);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.36), rgba(244, 114, 182, 0.32));
+  color: #ffffff;
+  padding: 7px 11px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
+  transition: transform 0.12s ease, filter 0.15s ease, opacity 0.15s ease;
+}
+
+.dce-rp-go:hover:not(:disabled) {
+  filter: brightness(1.14);
+}
+
+.dce-rp-go:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.dce-rp-go:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dce-rp-hint {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.52);
+  text-align: center;
 }

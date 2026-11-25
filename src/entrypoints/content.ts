@@ -3,25 +3,33 @@ import '../ui/content.css';
 import {
   extractVisibleMessages,
   formatMessagesAsMarkdown,
+  shouldTriggerShortcutCopy,
   toExportableMessage,
 } from '../lib/extractor';
 import { MutedChannelsController } from '../lib/muted';
 import {
   getHideMutedSetting,
+  getReactWordSetting,
   onHideMutedSettingChanged,
+  onReactWordSettingChanged,
   setHideMutedSetting,
+  setReactWordSetting,
 } from '../lib/storage';
 import { serializeToon } from '../lib/toon';
 import {
   EVENT_ARM_FORWARD,
   EVENT_DISARM_FORWARD,
   EVENT_FORWARD_PROGRESS,
+  EVENT_WORD_REACT,
+  EVENT_WORD_REACT_PROGRESS,
   MESSAGE_KEYS,
   type DiscordMessage,
   type ExportFormat,
   type ExtractOptions,
   type ForwardProgressDetail,
+  type WordReactProgressDetail,
 } from '../lib/types';
+import { DEFAULT_REACT_WORD, wordToReactionEmojis } from '../lib/word-react';
 import { LiquidGlassDock } from '../ui/dock';
 import { SelectionManager } from '../ui/selection';
 
@@ -35,15 +43,69 @@ export default defineContentScript({
     let isForwarding = false;
     let modalObserver: MutationObserver | null = null;
     let sawForwardModal = false;
+    let reactWord = DEFAULT_REACT_WORD;
+    const pendingWordReacts = new Map<string, (ok: boolean) => void>();
 
     const dock = new LiquidGlassDock();
     const mutedController = new MutedChannelsController(() => scheduleSync());
-    const selectionManager = new SelectionManager(() => refreshDock());
+
+    function applyReactWord(word: string) {
+      reactWord = word;
+      selectionManager.setReactWord(reactWord);
+      refreshDock();
+    }
+
+    function triggerWordReact(
+      channelId: string,
+      messageId: string,
+      wordOverride?: string,
+    ): Promise<boolean> {
+      const effectiveWord = (wordOverride ?? reactWord).trim();
+      if (effectiveWord && effectiveWord !== reactWord) {
+        applyReactWord(effectiveWord);
+        void setReactWordSetting(effectiveWord);
+      }
+
+      const emojis = wordToReactionEmojis(effectiveWord);
+      if (!emojis.length) {
+        dock.showStatus('Type letters or numbers first', true);
+        return Promise.resolve(false);
+      }
+
+      const requestId = `dce-react-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      dock.showStatus(`Reacting "${effectiveWord}" (${emojis.length})...`, false, true);
+
+      return new Promise<boolean>((resolve) => {
+        pendingWordReacts.set(requestId, resolve);
+        window.dispatchEvent(
+          new CustomEvent(EVENT_WORD_REACT, {
+            detail: { requestId, channelId, messageId, emojis },
+          }),
+        );
+      });
+    }
+
+    const selectionManager = new SelectionManager(
+      () => refreshDock(),
+      async (msg) => {
+        const toon = serializeToon([toExportableMessage(msg)], MESSAGE_KEYS);
+        try {
+          await navigator.clipboard.writeText(toon);
+          dock.showStatus('Copied message as TOON');
+          return true;
+        } catch {
+          dock.showStatus('Clipboard error', true);
+          return false;
+        }
+      },
+      (channelId, messageId, word) => triggerWordReact(channelId, messageId, word),
+    );
 
     function refreshDock() {
       dock.update({
         selectedCount: selectionManager.getCount(),
         hideMutedChannels: mutedController.isEnabled(),
+        reactWord,
         isForwarding,
       });
     }
@@ -244,6 +306,60 @@ export default defineContentScript({
 
     window.addEventListener(EVENT_FORWARD_PROGRESS, onForwardProgress);
 
+    const onWordReactProgress = (evt: Event) => {
+      const detail = (evt as CustomEvent<WordReactProgressDetail>).detail;
+      if (!detail || !pendingWordReacts.has(detail.requestId)) return;
+
+      if (!detail.done) {
+        dock.showStatus(`Reacting ${detail.sent}/${detail.total}...`, false, true);
+        return;
+      }
+
+      const resolve = pendingWordReacts.get(detail.requestId);
+      pendingWordReacts.delete(detail.requestId);
+
+      if (detail.error || (detail.failed > 0 && detail.sent === 0)) {
+        dock.showStatus(detail.error || 'Could not add reactions', true);
+        resolve?.(false);
+      } else {
+        dock.showStatus(`Reacted "${reactWord.trim()}" (${detail.sent})!`);
+        resolve?.(true);
+      }
+    };
+
+    window.addEventListener(EVENT_WORD_REACT_PROGRESS, onWordReactProgress);
+
+    // Ctrl+C / Cmd+C immediately copies selected messages as TOON (works on Arabic & English layouts)
+    const onKeyDown = (e: KeyboardEvent) => {
+      const selectedText = window.getSelection()?.toString().trim() || '';
+      const activeEl = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null;
+      const hasInputSelection =
+        activeEl &&
+        (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') &&
+        typeof activeEl.selectionStart === 'number' &&
+        typeof activeEl.selectionEnd === 'number' &&
+        activeEl.selectionEnd > activeEl.selectionStart;
+
+      if (
+        shouldTriggerShortcutCopy({
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          key: e.key,
+          code: e.code,
+          selectedCount: selectionManager.getCount(),
+          hasTextSelection: selectedText.length > 0 || Boolean(hasInputSelection),
+        })
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        copyExport('toon');
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+
     function scheduleSync() {
       if (syncScheduled) return;
       syncScheduled = true;
@@ -254,11 +370,14 @@ export default defineContentScript({
       });
     }
 
-    // Initialize immediately with hideMuted ON (zero flicker), then hydrate saved setting
+    // Initialize immediately with hideMuted ON (zero flicker), then hydrate saved settings
     mutedController.setEnabled(true);
     void getHideMutedSetting().then((saved) => {
       mutedController.setEnabled(saved);
       refreshDock();
+    });
+    void getReactWordSetting().then((savedWord) => {
+      applyReactWord(savedWord);
     });
 
     dock.mount({
@@ -274,6 +393,11 @@ export default defineContentScript({
         refreshDock();
         dock.showStatus(enabled ? 'Muted channels hidden' : 'Muted channels shown');
       },
+      onReactWordChange: (word) => {
+        reactWord = word;
+        selectionManager.setReactWord(word);
+        void setReactWordSetting(word);
+      },
     });
 
     selectionManager.decorateVisibleMessages();
@@ -287,9 +411,12 @@ export default defineContentScript({
       mutedController.setEnabled(enabled);
       refreshDock();
     });
+    const unsubReactWord = onReactWordSettingChanged((word) => {
+      applyReactWord(word);
+    });
 
     const onRuntimeMessage = (
-      request: { action?: string; options?: ExtractOptions; enabled?: boolean },
+      request: { action?: string; options?: ExtractOptions; enabled?: boolean; word?: string },
       _sender: unknown,
       sendResponse: (response: unknown) => void,
     ) => {
@@ -297,6 +424,7 @@ export default defineContentScript({
         sendResponse({
           selectedCount: selectionManager.getCount(),
           hideMutedChannels: mutedController.isEnabled(),
+          reactWord,
         });
       } else if (request.action === 'extract') {
         const { messages, usedSelected } = getMessagesForExport(request.options || {});
@@ -320,6 +448,11 @@ export default defineContentScript({
         void setHideMutedSetting(enabled);
         refreshDock();
         sendResponse({ hideMutedChannels: mutedController.isEnabled() });
+      } else if (request.action === 'setReactWord') {
+        const nextWord = typeof request.word === 'string' ? request.word : DEFAULT_REACT_WORD;
+        applyReactWord(nextWord);
+        void setReactWordSetting(nextWord);
+        sendResponse({ reactWord });
       } else if (request.action === 'forwardSelected') {
         void startMultiForward();
         sendResponse({ started: true, count: selectionManager.getCount() });
@@ -333,8 +466,12 @@ export default defineContentScript({
       bodyObserver.disconnect();
       mutedController.disconnect();
       cleanupForwardModalWatch();
+      selectionManager.closeReactPopover();
       unsubStorage();
+      unsubReactWord();
+      document.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener(EVENT_FORWARD_PROGRESS, onForwardProgress);
+      window.removeEventListener(EVENT_WORD_REACT_PROGRESS, onWordReactProgress);
       browser.runtime.onMessage.removeListener(onRuntimeMessage);
       dock.unmount();
     });

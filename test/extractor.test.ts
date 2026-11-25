@@ -5,6 +5,7 @@ import {
   parseMessageId,
   parseMessageMeta,
   resolveAuthorForElement,
+  shouldTriggerShortcutCopy,
   sortMessagesChronologically,
 } from '../src/lib/extractor';
 import { isMutedSidebarItem } from '../src/lib/muted';
@@ -107,6 +108,64 @@ describe('extractor & muted detection', () => {
     // colorMuted_ should NOT match
     expect(
       isMutedSidebarItem(makeEl('containerDefault_abc', [{ className: 'root_KNAhcP colorMuted_KNAhcP' }])),
+    ).toBe(false);
+  });
+
+  it('triggers Ctrl+C / Cmd+C TOON copy when messages are selected (including Arabic keyboard layout)', () => {
+    // English Ctrl+C with 2 selected messages
+    expect(
+      shouldTriggerShortcutCopy({
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+        altKey: false,
+        key: 'c',
+        code: 'KeyC',
+        selectedCount: 2,
+        hasTextSelection: false,
+      }),
+    ).toBe(true);
+
+    // Arabic keyboard layout Ctrl+ؤ (code === 'KeyC')
+    expect(
+      shouldTriggerShortcutCopy({
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+        altKey: false,
+        key: 'ؤ',
+        code: 'KeyC',
+        selectedCount: 1,
+        hasTextSelection: false,
+      }),
+    ).toBe(true);
+
+    // Yields to native copy when text is highlighted
+    expect(
+      shouldTriggerShortcutCopy({
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+        altKey: false,
+        key: 'c',
+        code: 'KeyC',
+        selectedCount: 2,
+        hasTextSelection: true,
+      }),
+    ).toBe(false);
+
+    // Does nothing when 0 messages selected
+    expect(
+      shouldTriggerShortcutCopy({
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+        altKey: false,
+        key: 'c',
+        code: 'KeyC',
+        selectedCount: 0,
+        hasTextSelection: false,
+      }),
     ).toBe(false);
   });
 });

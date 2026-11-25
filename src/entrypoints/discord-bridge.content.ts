@@ -7,10 +7,15 @@ import {
   EVENT_ARM_FORWARD,
   EVENT_DISARM_FORWARD,
   EVENT_FORWARD_PROGRESS,
+  EVENT_WORD_REACT,
+  EVENT_WORD_REACT_PROGRESS,
   type ForwardProgressDetail,
   type ForwardSessionPayload,
   type ForwardTargetRef,
+  type WordReactProgressDetail,
+  type WordReactRequestPayload,
 } from '../lib/types';
+import { buildReactionEndpoint } from '../lib/word-react';
 
 interface ArmedSession {
   sessionId: string;
@@ -26,6 +31,10 @@ interface TrackedXhr extends XMLHttpRequest {
   __dceInternal?: boolean;
 }
 
+function isDiscordApiUrl(url: string): boolean {
+  return /^(?:https:\/\/(?:[a-z]+\.)?discord\.com)?\/api\/v\d+\//.test(url);
+}
+
 export default defineContentScript({
   matches: ['https://discord.com/*'],
   world: 'MAIN',
@@ -38,29 +47,49 @@ export default defineContentScript({
     (window as unknown as Record<string, unknown>).__DCE_BRIDGE_INSTALLED__ = true;
 
     let activeSession: ArmedSession | null = null;
+    // Transient in-memory copy of Discord's own session headers for this tab only
+    let lastApiHeaders: Record<string, string> | null = null;
 
     const origXhrOpen = XMLHttpRequest.prototype.open;
     const origXhrSetHeader = XMLHttpRequest.prototype.setRequestHeader;
     const origXhrSend = XMLHttpRequest.prototype.send;
     const origFetch = window.fetch.bind(window);
 
-    function emitProgress(detail: ForwardProgressDetail) {
+    function captureSessionHeaders(url: string, headers: Record<string, string>) {
+      if (!isDiscordApiUrl(url)) return;
+      const hasAuth = Object.keys(headers).some((k) => k.toLowerCase() === 'authorization');
+      if (!hasAuth) return;
+      const cleaned: Record<string, string> = {};
+      for (const [k, v] of Object.entries(headers)) {
+        const lower = k.toLowerCase();
+        if (lower === 'content-length' || lower === 'content-type') continue;
+        cleaned[k] = v;
+      }
+      lastApiHeaders = cleaned;
+    }
+
+    function emitForwardProgress(detail: ForwardProgressDetail) {
       window.dispatchEvent(new CustomEvent(EVENT_FORWARD_PROGRESS, { detail }));
+    }
+
+    function emitReactProgress(detail: WordReactProgressDetail) {
+      window.dispatchEvent(new CustomEvent(EVENT_WORD_REACT_PROGRESS, { detail }));
     }
 
     function sleep(ms: number): Promise<void> {
       return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    function sendXhrReplay(
+    function sendXhrRequest(
+      method: 'POST' | 'PUT',
       url: string,
       headers: Record<string, string>,
-      bodyStr: string,
+      bodyStr: string | null = null,
     ): Promise<{ status: number; responseText: string }> {
       return new Promise((resolve) => {
         const xhr = new XMLHttpRequest() as TrackedXhr;
         xhr.__dceInternal = true;
-        origXhrOpen.call(xhr, 'POST', url, true);
+        origXhrOpen.call(xhr, method, url, true);
         xhr.withCredentials = true;
 
         for (const [k, v] of Object.entries(headers)) {
@@ -71,7 +100,7 @@ export default defineContentScript({
             // Skip forbidden browser-managed headers
           }
         }
-        if (!Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) {
+        if (bodyStr !== null && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) {
           try {
             origXhrSetHeader.call(xhr, 'Content-Type', 'application/json');
           } catch {
@@ -82,6 +111,86 @@ export default defineContentScript({
         xhr.onload = () => resolve({ status: xhr.status, responseText: xhr.responseText });
         xhr.onerror = () => resolve({ status: 0, responseText: '' });
         origXhrSend.call(xhr, bodyStr);
+      });
+    }
+
+    async function runWordReact(payload: WordReactRequestPayload) {
+      const { requestId, channelId, messageId, emojis } = payload;
+      const total = emojis.length;
+      if (!total) {
+        emitReactProgress({ requestId, sent: 0, total: 0, failed: 0, done: true });
+        return;
+      }
+
+      if (!lastApiHeaders) {
+        emitReactProgress({
+          requestId,
+          sent: 0,
+          total,
+          failed: total,
+          done: true,
+          error: 'Wait a moment for Discord to sync, then click again',
+        });
+        return;
+      }
+
+      const headers = { ...lastApiHeaders };
+      let sent = 0;
+      let failed = 0;
+
+      for (let i = 0; i < emojis.length; i++) {
+        const emoji = emojis[i]!;
+        if (i > 0) {
+          await sleep(340);
+        }
+
+        let url = buildReactionEndpoint(channelId, messageId, emoji);
+        let res = await sendXhrRequest('PUT', url, headers, null);
+
+        // Fallback: if Discord rejects variation selector \uFE0F with 400, retry stripped once
+        if (res.status === 400 && emoji.includes('\uFE0F')) {
+          const stripped = emoji.replace(/\uFE0F/g, '');
+          url = buildReactionEndpoint(channelId, messageId, stripped);
+          res = await sendXhrRequest('PUT', url, headers, null);
+        }
+
+        // Respect Discord 429 rate-limit Retry-After once automatically
+        if (res.status === 429) {
+          let waitMs = 1200;
+          try {
+            const parsed = JSON.parse(res.responseText) as { retry_after?: number };
+            if (typeof parsed.retry_after === 'number') {
+              waitMs = Math.ceil(parsed.retry_after * 1000) + 180;
+            }
+          } catch {
+            // Fallback delay
+          }
+          await sleep(waitMs);
+          res = await sendXhrRequest('PUT', url, headers, null);
+        }
+
+        if (res.status >= 200 && res.status < 300) {
+          sent++;
+        } else {
+          failed++;
+        }
+
+        emitReactProgress({
+          requestId,
+          sent,
+          total,
+          failed,
+          done: false,
+        });
+      }
+
+      emitReactProgress({
+        requestId,
+        sent,
+        total,
+        failed,
+        done: true,
+        error: failed > 0 && sent === 0 ? 'Reaction request failed' : undefined,
       });
     }
 
@@ -96,16 +205,15 @@ export default defineContentScript({
       let sent = totalCount - remaining.length;
       let failed = 0;
 
-      emitProgress({ sessionId, sent, total: totalCount, done: false });
+      emitForwardProgress({ sessionId, sent, total: totalCount, done: false });
 
       for (const target of remaining) {
         await sleep(380);
         const payload = buildForwardPayload(baseBody, target, { preserveContent: false });
         const bodyStr = JSON.stringify(payload);
 
-        let res = await sendXhrReplay(url, headers, bodyStr);
+        let res = await sendXhrRequest('POST', url, headers, bodyStr);
 
-        // Respect Discord 429 rate-limit Retry-After once automatically
         if (res.status === 429) {
           let waitMs = 1500;
           try {
@@ -117,7 +225,7 @@ export default defineContentScript({
             // Use fallback delay
           }
           await sleep(waitMs);
-          res = await sendXhrReplay(url, headers, bodyStr);
+          res = await sendXhrRequest('POST', url, headers, bodyStr);
         }
 
         if (res.status >= 200 && res.status < 300) {
@@ -126,7 +234,7 @@ export default defineContentScript({
           failed++;
         }
 
-        emitProgress({
+        emitForwardProgress({
           sessionId,
           sent,
           total: totalCount,
@@ -135,7 +243,7 @@ export default defineContentScript({
         });
       }
 
-      emitProgress({
+      emitForwardProgress({
         sessionId,
         sent,
         total: totalCount,
@@ -146,8 +254,6 @@ export default defineContentScript({
 
     function scheduleAutoDisarm(session: ArmedSession) {
       if (session.disarmTimer) clearTimeout(session.disarmTimer);
-      // Keep briefly armed after first destination fires so multi-destination
-      // sends triggered by the same "Send" click also forward the full queue.
       session.disarmTimer = setTimeout(() => {
         if (activeSession?.sessionId === session.sessionId) {
           activeSession = null;
@@ -155,7 +261,7 @@ export default defineContentScript({
       }, 2500);
     }
 
-    // Listen for arm/disarm instructions from the isolated content script
+    // Listen for arm/disarm forward & word-react commands from isolated content script
     window.addEventListener(EVENT_ARM_FORWARD, (evt: Event) => {
       const detail = (evt as CustomEvent<ForwardSessionPayload>).detail;
       if (!detail || !Array.isArray(detail.messages) || detail.messages.length === 0) return;
@@ -176,6 +282,12 @@ export default defineContentScript({
         if (activeSession.disarmTimer) clearTimeout(activeSession.disarmTimer);
         activeSession = null;
       }
+    });
+
+    window.addEventListener(EVENT_WORD_REACT, (evt: Event) => {
+      const detail = (evt as CustomEvent<WordReactRequestPayload>).detail;
+      if (!detail || !detail.channelId || !detail.messageId || !Array.isArray(detail.emojis)) return;
+      void runWordReact(detail);
     });
 
     // --- Hook 1: XMLHttpRequest (Discord Web's primary superagent transport) ---
@@ -206,6 +318,10 @@ export default defineContentScript({
       this: TrackedXhr,
       body?: Document | XMLHttpRequestBodyInit | null,
     ) {
+      if (!this.__dceInternal && this.__dceUrl && this.__dceHeaders) {
+        captureSessionHeaders(this.__dceUrl, this.__dceHeaders);
+      }
+
       if (
         !activeSession ||
         this.__dceInternal ||
@@ -237,7 +353,6 @@ export default defineContentScript({
       const capturedUrl = this.__dceUrl;
       const capturedHeaders = { ...(this.__dceHeaders || {}) };
 
-      // Ensure message #1 in chronological order is the one sent first
       const currentRef = parsedBody.message_reference as { message_id?: string };
       let outgoingBodyStr = body;
       if (firstTarget && currentRef.message_id !== firstTarget.messageId) {
@@ -259,7 +374,7 @@ export default defineContentScript({
                 session.messages.length,
               );
             } else {
-              emitProgress({
+              emitForwardProgress({
                 sessionId: session.sessionId,
                 sent: 0,
                 total: session.messages.length,
@@ -276,7 +391,7 @@ export default defineContentScript({
           'load',
           () => {
             const ok = this.status >= 200 && this.status < 300;
-            emitProgress({
+            emitForwardProgress({
               sessionId: session.sessionId,
               sent: ok ? 1 : 0,
               total: 1,
@@ -291,15 +406,23 @@ export default defineContentScript({
       return origXhrSend.call(this, outgoingBodyStr);
     };
 
-    // --- Hook 2: window.fetch (fallback if Discord sends via fetch) ---
+    // --- Hook 2: window.fetch ---
     window.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+
+      if (init?.headers && isDiscordApiUrl(url)) {
+        const hdrObj: Record<string, string> = {};
+        new Headers(init.headers).forEach((v, k) => {
+          hdrObj[k] = v;
+        });
+        captureSessionHeaders(url, hdrObj);
+      }
+
       if (!activeSession) {
         return origFetch(input, init);
       }
 
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       const method = (init?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
-
       if (method !== 'POST' || !isDiscordMessagesEndpoint(url) || typeof init?.body !== 'string') {
         return origFetch(input, init);
       }
@@ -331,8 +454,7 @@ export default defineContentScript({
 
       const capturedHeaders: Record<string, string> = {};
       if (init.headers) {
-        const hdrs = new Headers(init.headers);
-        hdrs.forEach((v, k) => {
+        new Headers(init.headers).forEach((v, k) => {
           capturedHeaders[k] = v;
         });
       }
@@ -349,7 +471,7 @@ export default defineContentScript({
           session.messages.length,
         );
       } else {
-        emitProgress({
+        emitForwardProgress({
           sessionId: session.sessionId,
           sent: response.ok ? 1 : 0,
           total: session.messages.length,

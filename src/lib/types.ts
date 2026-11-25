@@ -52,6 +52,23 @@ export interface ExtractResponse {
 export interface ExtensionStateResponse {
   selectedCount: number;
   hideMutedChannels: boolean;
+  reactWord: string;
+}
+
+export interface WordReactRequestPayload {
+  requestId: string;
+  channelId: string;
+  messageId: string;
+  emojis: string[];
+}
+
+export interface WordReactProgressDetail {
+  requestId: string;
+  sent: number;
+  total: number;
+  failed: number;
+  done: boolean;
+  error?: string;
 }
 
 export const MESSAGE_KEYS: (keyof DiscordMessage)[] = [
@@ -66,6 +83,9 @@ export const MESSAGE_KEYS: (keyof DiscordMessage)[] = [
 ];
 
 export const STORAGE_KEY_HIDE_MUTED = 'dce_hide_muted_channels';
+export const STORAGE_KEY_REACT_WORD = 'dce_react_word';
 export const EVENT_ARM_FORWARD = 'dce:arm-forward';
 export const EVENT_DISARM_FORWARD = 'dce:disarm-forward';
 export const EVENT_FORWARD_PROGRESS = 'dce:forward-progress';
+export const EVENT_WORD_REACT = 'dce:word-react';
+export const EVENT_WORD_REACT_PROGRESS = 'dce:word-react-progress';

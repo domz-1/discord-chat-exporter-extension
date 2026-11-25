@@ -247,6 +247,57 @@
       background: rgba(255, 255, 255, 0.16);
     }
 
+    .word-box {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .word-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .word-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.84);
+    }
+
+    .word-preview {
+      font-size: 12px;
+      max-width: 155px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .word-input {
+      width: 100%;
+      padding: 6px 9px;
+      border-radius: 9px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(8, 11, 18, 0.58);
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      outline: none;
+    }
+
+    .word-input:focus {
+      border-color: rgba(250, 204, 128, 0.65);
+      box-shadow: 0 0 0 2px rgba(250, 204, 128, 0.18);
+    }
+
     .toggle-row {
       position: relative;
       display: flex;
@@ -388,6 +439,23 @@
           <span>MD</span>
         </button>
       </div>
+    </div>
+
+    <div class="word-box">
+      <div class="word-header">
+        <span class="word-label">Word React</span>
+        <span class="word-preview" id="pop-word-preview">🇩 🇴 🇳 🇪</span>
+      </div>
+      <input
+        type="text"
+        class="word-input"
+        id="pop-react-word"
+        maxlength="24"
+        placeholder="e.g. DONE, A7A, 100"
+        value="DONE"
+        autocomplete="off"
+        spellcheck="false"
+      />
     </div>
 
     <label class="toggle-row" for="pop-toggle-muted">

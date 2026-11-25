@@ -1,5 +1,11 @@
-import { getHideMutedSetting, setHideMutedSetting } from '../../lib/storage';
+import {
+  getHideMutedSetting,
+  getReactWordSetting,
+  setHideMutedSetting,
+  setReactWordSetting,
+} from '../../lib/storage';
 import type { ExtensionStateResponse, ExtractResponse } from '../../lib/types';
+import { wordToReactionEmojis } from '../../lib/word-react';
 
 let statusTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -71,11 +77,26 @@ async function sendToDiscord<T>(
   }
 }
 
+function updateWordPreview(word: string) {
+  const preview = document.getElementById('pop-word-preview');
+  if (!preview) return;
+  const emojis = wordToReactionEmojis(word);
+  preview.textContent = emojis.length ? emojis.join(' ') : '—';
+}
+
 async function initPopup() {
   const toggleEl = document.getElementById('pop-toggle-muted') as HTMLInputElement | null;
+  const wordInput = document.getElementById('pop-react-word') as HTMLInputElement | null;
 
-  const savedMuted = await getHideMutedSetting();
+  const [savedMuted, savedWord] = await Promise.all([
+    getHideMutedSetting(),
+    getReactWordSetting(),
+  ]);
   if (toggleEl) toggleEl.checked = savedMuted;
+  if (wordInput) {
+    wordInput.value = savedWord;
+    updateWordPreview(savedWord);
+  }
 
   const state = await sendToDiscord<ExtensionStateResponse>({ action: 'getState' }, true);
   if (state) {
@@ -83,7 +104,18 @@ async function initPopup() {
     if (toggleEl && typeof state.hideMutedChannels === 'boolean') {
       toggleEl.checked = state.hideMutedChannels;
     }
+    if (wordInput && typeof state.reactWord === 'string') {
+      wordInput.value = state.reactWord;
+      updateWordPreview(state.reactWord);
+    }
   }
+
+  wordInput?.addEventListener('input', () => {
+    const word = wordInput.value;
+    updateWordPreview(word);
+    void setReactWordSetting(word);
+    void sendToDiscord({ action: 'setReactWord', word }, true);
+  });
 
   toggleEl?.addEventListener('change', async (e) => {
     const enabled = (e.target as HTMLInputElement).checked;
