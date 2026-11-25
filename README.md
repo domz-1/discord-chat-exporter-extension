@@ -1,35 +1,57 @@
-# Discord Chat Exporter Extension (Chrome / Brave / Firefox)
+# Discord Chat Exporter Extension (WXT · Chrome / Brave / Firefox)
 
-A browser extension to extract Discord messages, threads, replies, and attachments into **TOON** (Token-Oriented Object Notation), **JSON**, and **Markdown**.
+A **WXT + TypeScript** browser extension with a **Liquid Glass** UI to multi-select, batch-forward, and export Discord messages, threads, replies, and attachments into **TOON** (Token-Oriented Object Notation), **JSON**, and **Markdown** — plus hide muted channels and DMs completely.
 
-## 🚀 Why TOON?
-LLMs consume tokens for repetitive JSON keys (`"id": ...`, `"author": ...`, `"content": ...`). 
-**TOON** declares keys once at the top:
-```text
-[count]{id,author,time,link,reply_to,attachments,content}:
-val1,val2,val3,...
+## ✨ Features
+
+- **Multi-Select Messages**: Hover any message to toggle its glass checkbox, or `Shift+Click` for range selection. Scroll-safe in-memory cache preserves selections across Discord's virtualized scroll list and exports in chronological snowflake order.
+- **Native Multi-Forward**: Click **Forward Selected** to open Discord's own native **Forward To** modal and forward all selected messages in chronological order via Discord's real `message_reference` (`type: 1`) flow.
+- **Minimal Hover-Only Liquid Glass Dock**: Collapses to a subtle `14px` translucent pearl dot in the bottom-right corner and blooms into the full Liquid Glass panel only when hovered.
+- **Hide Muted Channels & DMs**: Automatically hides muted server channels, muted categories, and muted Direct Messages / Group DMs (with a synced toggle in both the dock and popup).
+- **TOON / JSON / Markdown Export**: Saves 30%–60% LLM tokens with TOON serialization for bug audits and Jira tickets.
+
+---
+
+## 🛠️ Development & Build (WXT)
+
+```bash
+bun install
+bun run dev        # Hot-reload development build
+bun run build      # Production build -> .output/chrome-mv3
+bun run typecheck  # Strict TypeScript check
+bun test           # Run unit tests
 ```
-This saves **30% to 60% of tokens**, allowing you to feed whole Discord bug reports and QA chats directly to Antigravity agents without blowing context limits.
 
 ---
 
-## 📦 How to Install in Chrome / Brave
+## 📦 How to Load in Brave / Chrome
 
-1. Open your browser and go to `chrome://extensions/`
-2. Enable **Developer mode** (toggle in top right).
-3. Click **Load unpacked**.
-4. Select the folder:
-   `/home/adham/projects/adham/discord-chat-exporter-extension`
-5. Open any Discord chat on [Discord Web](https://discord.com/channels/@me).
-6. You will see a floating **⚡ Discord Exporter** widget in the bottom right corner with buttons:
-   - **📋 Copy TOON**: Copies compact representation to clipboard.
-   - **📦 Copy JSON**: Copies standard JSON array.
-   - **📝 Copy MD**: Copies formatted Markdown list.
+1. Run `bun run build`.
+2. Open `brave://extensions/` (or `chrome://extensions/`).
+3. Enable **Developer mode** (top right).
+4. Click **Load unpacked** and select:
+   `/home/adham/projects/adham/discord-chat-exporter-extension/.output/chrome-mv3`
+5. Refresh [Discord Web](https://discord.com/channels/@me).
 
 ---
 
-## 🛠️ Antigravity Skill Integration
-This extension pairs with the Antigravity skill:
-`discord-to-jira-bugs` at `/home/adham/.agents/skills/discord-to-jira-bugs/SKILL.md`.
+## 📁 Project Structure
 
-Paste the copied TOON directly into Antigravity to convert Discord QA bug discussions into audited Jira tickets!
+```text
+src/
+├── entrypoints/
+│   ├── discord-bridge.content.ts  # MAIN-world hook for native multi-forward
+│   ├── content.ts                 # Isolated content script (UI, selection, muted filter)
+│   └── popup/                     # Liquid Glass extension popup
+├── lib/
+│   ├── extractor.ts               # Message parser, snowflake sort, Markdown formatter
+│   ├── forward.ts                 # Discord Forward payload & snowflake nonce helpers
+│   ├── muted.ts                   # Muted channels, categories & DMs detector/observer
+│   ├── storage.ts                 # Synced browser.storage helpers
+│   ├── toon.ts                    # TOON serializer & parser
+│   └── types.ts                   # Shared TypeScript interfaces
+└── ui/
+    ├── content.css                # Liquid Glass styles + muted channel hiding rules
+    ├── dock.ts                    # Tiny glass dot -> hover expandable dock
+    └── selection.ts               # Multi-select checkboxes & scroll-safe cache
+```

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Discord Exporter</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 300px;
+      margin: 0;
+      padding: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+      color: rgba(255, 255, 255, 0.94);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(114, 152, 255, 0.34), transparent 52%),
+        radial-gradient(circle at 88% 82%, rgba(92, 214, 255, 0.24), transparent 50%),
+        linear-gradient(155deg, #0d101c 0%, #14192a 55%, #0f1422 100%);
+    }
+
+    .glass-card {
+      position: relative;
+      padding: 14px;
+      border-radius: 20px;
+      background:
+        linear-gradient(
+          152deg,
+          rgba(255, 255, 255, 0.11) 0%,
+          rgba(255, 255, 255, 0.03) 48%,
+          rgba(148, 192, 255, 0.07) 100%
+        ),
+        rgba(14, 17, 26, 0.84);
+      -webkit-backdrop-filter: blur(36px) saturate(185%);
+      backdrop-filter: blur(36px) saturate(185%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow:
+        0 20px 42px rgba(0, 0, 0, 0.56),
+        inset 0 1px 0.5px rgba(255, 255, 255, 0.34),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 11px;
+      overflow: hidden;
+    }
+
+    .glass-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(
+        115% 48% at 50% -14%,
+        rgba(255, 255, 255, 0.14) 0%,
+        rgba(255, 255, 255, 0.03) 46%,
+        transparent 68%
+      );
+      pointer-events: none;
+    }
+
+    .header {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .orb {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #ffffff 0%, #9ac5ff 55%, #6378ff 100%);
+      box-shadow: 0 0 12px rgba(138, 180, 255, 0.8);
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pill {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.82);
+    }
+
+    .pill.active {
+      background: linear-gradient(135deg, rgba(130, 178, 255, 0.34), rgba(99, 120, 255, 0.28));
+      border-color: rgba(182, 214, 255, 0.48);
+      color: #ffffff;
+    }
+
+    .clear-btn {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 148, 156, 0.32);
+      background: rgba(255, 110, 124, 0.16);
+      color: #ffd6da;
+      cursor: pointer;
+    }
+
+    .clear-btn:hover {
+      background: rgba(255, 110, 124, 0.3);
+    }
+
+    .desc {
+      position: relative;
+      font-size: 11.5px;
+      color: rgba(255, 255, 255, 0.66);
+      line-height: 1.45;
+      margin: 0;
+    }
+
+    .actions {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .actions-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    button.glass-btn {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.13) 0%,
+        rgba(255, 255, 255, 0.05) 100%
+      );
+      color: rgba(255, 255, 255, 0.94);
+      padding: 9px 11px;
+      border-radius: 13px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+      transition: all 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    button.glass-btn:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    button.glass-btn svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+
+    button.glass-btn:not(:disabled):hover {
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.24) 0%,
+        rgba(255, 255, 255, 0.11) 100%
+      );
+      border-color: rgba(255, 255, 255, 0.38);
+      transform: translateY(-1px);
+    }
+
+    button.glass-btn:not(:disabled):active {
+      transform: scale(0.97);
+    }
+
+    button.glass-btn.forward {
+      justify-content: flex-start;
+      padding: 10px 12px;
+    }
+
+    button.glass-btn.forward.ready {
+      background: linear-gradient(
+        135deg,
+        rgba(92, 214, 180, 0.34) 0%,
+        rgba(56, 168, 224, 0.3) 100%
+      );
+      border-color: rgba(154, 240, 220, 0.48);
+      box-shadow:
+        0 6px 18px rgba(48, 180, 170, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    }
+
+    button.glass-btn.primary {
+      justify-content: flex-start;
+      padding: 10px 12px;
+      background: linear-gradient(
+        135deg,
+        rgba(138, 178, 255, 0.34) 0%,
+        rgba(96, 118, 255, 0.28) 100%
+      );
+      border-color: rgba(186, 214, 255, 0.38);
+      box-shadow:
+        0 6px 18px rgba(84, 112, 255, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    button.glass-btn.primary:hover {
+      background: linear-gradient(
+        135deg,
+        rgba(154, 192, 255, 0.48) 0%,
+        rgba(108, 130, 255, 0.42) 100%
+      );
+      border-color: rgba(212, 232, 255, 0.62);
+    }
+
+    .tag {
+      margin-left: auto;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .toggle-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      cursor: pointer;
+    }
+
+    .toggle-row:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      font-weight: 550;
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    .toggle-label svg {
+      width: 14px;
+      height: 14px;
+      opacity: 0.82;
+    }
+
+    .switch {
+      position: relative;
+      width: 34px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .switch-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      transition: background 0.22s ease, border-color 0.22s ease;
+    }
+
+    .switch-track::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #ffffff 0%, #e6eeff 100%);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .switch input:checked + .switch-track {
+      background: linear-gradient(135deg, rgba(122, 184, 255, 0.85), rgba(96, 122, 255, 0.85));
+      border-color: rgba(196, 224, 255, 0.65);
+    }
+
+    .switch input:checked + .switch-track::after {
+      transform: translateX(14px);
+    }
+
+    .status {
+      position: relative;
+      font-size: 11px;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.6);
+      min-height: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="glass-card">
+    <div class="header">
+      <div class="brand">
+        <span class="orb"></span>
+        <h3>Discord Exporter</h3>
+      </div>
+      <div class="header-meta">
+        <span class="pill" id="pop-selection-badge">All visible</span>
+        <button type="button" class="clear-btn" id="pop-clear" hidden>Clear</button>
+      </div>
+    </div>
+
+    <p class="desc">
+      Hover Discord messages to multi-select (Shift+Click for range). Forward together or export as TOON, JSON, and Markdown.
+    </p>
+
+    <div class="actions">
+      <button type="button" class="glass-btn forward" id="pop-forward" disabled>
+        <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M11 3.75L15.75 8.5L11 13.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M15.5 8.5H7.25C4.5 8.5 2.5 10.5 2.5 13.25V14.25" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Forward Selected</span>
+        <span class="tag" id="pop-forward-count" hidden>0</span>
+      </button>
+
+      <button type="button" class="glass-btn primary" id="pop-copy-toon">
+        <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M9 2.25L15 5.625L9 9L3 5.625L9 2.25Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M3 9L9 12.375L15 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 12.375L9 15.75L15 12.375" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Copy TOON</span>
+        <span class="tag">LLM</span>
+      </button>
+
+      <div class="actions-row">
+        <button type="button" class="glass-btn" id="pop-copy-json">
+          <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M6.5 3.5C5 3.5 4.5 4.25 4.5 5.5V7C4.5 8 3.75 9 3 9C3.75 9 4.5 10 4.5 11V12.5C4.5 13.75 5 14.5 6.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M11.5 3.5C13 3.5 13.5 4.25 13.5 5.5V7C13.5 8 14.25 9 15 9C14.25 9 13.5 10 13.5 11V12.5C13.5 13.75 13 14.5 11.5 14.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <span>JSON</span>
+        </button>
+
+        <button type="button" class="glass-btn" id="pop-copy-md">
+          <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <rect x="2.5" y="4" width="13" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M5.25 11.25V6.75L7.5 9.25L9.75 6.75V11.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M12.5 6.75V11.25M12.5 11.25L11.25 10M12.5 11.25L13.75 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>MD</span>
+        </button>
+      </div>
+    </div>
+
+    <label class="toggle-row" for="pop-toggle-muted">
+      <span class="toggle-label">
+        <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M2.5 2.5L15.5 15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M7.5 4.2A6.5 6.5 0 0 1 15.75 9a6.8 6.8 0 0 1-1.9 2.65M11.1 11.1A2.75 2.75 0 0 1 6.9 6.9M4.4 6.1A6.8 6.8 0 0 0 2.25 9a6.5 6.5 0 0 0 8.2 4.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Hide muted channels
+      </span>
+      <span class="switch">
+        <input type="checkbox" id="pop-toggle-muted" checked />
+        <span class="switch-track"></span>
+      </span>
+    </label>
+
+    <div class="status" id="pop-status">Ready</div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

@@ -1,11 +1,21 @@
 {
   "name": "discord-chat-exporter-extension",
-  "version": "1.0.0",
-  "description": "Chrome/Brave extension to export Discord chat messages as TOON, JSON, and Markdown",
+  "version": "2.0.0",
+  "description": "WXT Chrome/Brave extension to multi-select, forward, and export Discord messages as TOON, JSON, and Markdown",
+  "type": "module",
   "scripts": {
-    "test": "bun test/toon.test.js"
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "postinstall": "wxt prepare",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "devDependencies": {
-    "bun-types": "latest"
+    "bun-types": "latest",
+    "typescript": "^7.0.2",
+    "wxt": "^0.21.5"
   }
 }

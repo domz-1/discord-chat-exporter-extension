@@ -1,0 +1,634 @@
+/* ============================================================================
+ * 1. Hide Muted Server Channels, Categories & Direct Messages
+ *    Uses `data-dce-hide-muted="true"` because Discord overwrites html.className
+ * ========================================================================== */
+
+html[data-dce-hide-muted="true"] [data-dce-muted="true"],
+/* Server channels & active threads */
+html[data-dce-hide-muted="true"] #channels li:has([class*="modeMuted_"]),
+html[data-dce-hide-muted="true"] #channels [class*="containerDefault_"]:has([class*="modeMuted_"]),
+html[data-dce-hide-muted="true"] nav[aria-label*="(server)"] li:has([class*="modeMuted_"]),
+html[data-dce-hide-muted="true"] ul[aria-label="Channels"] li:has([class*="modeMuted_"]),
+/* Server muted categories */
+html[data-dce-hide-muted="true"] #channels li:has([class*="wrapperCommon_"][class*="muted_"]),
+html[data-dce-hide-muted="true"] #channels li:has([class*="wrapper_"][class*="muted_"]),
+/* Direct Messages & Group DMs (/channels/@me) */
+html[data-dce-hide-muted="true"] [class*="privateChannels_"] li:has([class*="muted_"]),
+html[data-dce-hide-muted="true"] nav[aria-label*="Private"] li:has([class*="muted_"]),
+html[data-dce-hide-muted="true"] ul[aria-label="Direct Messages"] li:has([class*="muted_"]),
+html[data-dce-hide-muted="true"] li[class*="channel_"]:has([class*="muted_"]),
+html[data-dce-hide-muted="true"] li[class*="channel_"][class*="muted_"] {
+  display: none !important;
+}
+
+/* ============================================================================
+ * 2. Multi-Select Message Checkboxes & Liquid Glass Selection Highlight
+ * ========================================================================== */
+
+.dce-msg-item {
+  position: relative !important;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.dce-msg-item.dce-selected {
+  background: linear-gradient(
+    90deg,
+    rgba(124, 152, 255, 0.18) 0%,
+    rgba(136, 212, 255, 0.08) 65%,
+    rgba(255, 255, 255, 0.03) 100%
+  ) !important;
+  box-shadow:
+    inset 2.5px 0 0 rgba(165, 205, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px;
+}
+
+.dce-select-btn {
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  z-index: 25;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.07) 100%
+  );
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.84);
+  transition:
+    opacity 0.16s ease,
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.15s ease,
+    box-shadow 0.18s ease;
+}
+
+.dce-select-btn svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+}
+
+.dce-msg-item:hover > .dce-select-btn {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+body.dce-has-selection .dce-msg-item > .dce-select-btn {
+  opacity: 0.42;
+  pointer-events: auto;
+  transform: scale(0.95);
+}
+
+body.dce-has-selection .dce-msg-item:hover > .dce-select-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.dce-select-btn:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: linear-gradient(
+    145deg,
+    rgba(165, 205, 255, 0.35) 0%,
+    rgba(124, 152, 255, 0.18) 100%
+  );
+  color: rgba(255, 255, 255, 0.65);
+  transform: scale(1.08) !important;
+}
+
+.dce-msg-item.dce-selected > .dce-select-btn {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: scale(1) !important;
+  color: #ffffff;
+  border-color: rgba(196, 224, 255, 0.8);
+  background: linear-gradient(
+    145deg,
+    rgba(125, 168, 255, 0.92) 0%,
+    rgba(91, 108, 249, 0.88) 100%
+  );
+  box-shadow:
+    0 4px 12px rgba(96, 128, 255, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+/* ============================================================================
+ * 3. Floating Tiny Liquid Glass Dot -> Hover Expandable Panel
+ * ========================================================================== */
+
+#discord-exporter-dock.dce-dock {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  pointer-events: none;
+  user-select: none;
+}
+
+#discord-exporter-dock.dce-dock.dce-open {
+  pointer-events: auto;
+}
+
+.dce-dot-hit {
+  pointer-events: auto;
+  padding: 10px;
+  margin: -10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.dce-dot {
+  min-width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.18) 48%, rgba(130, 170, 255, 0.22) 100%),
+    rgba(20, 24, 38, 0.78);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.45),
+    0 0 0 0.5px rgba(255, 255, 255, 0.16),
+    inset 0 1px 1px rgba(255, 255, 255, 0.65);
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    padding 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    min-width 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.25s ease,
+    box-shadow 0.25s ease,
+    opacity 0.2s ease;
+}
+
+.dce-dot-count {
+  display: none;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.dce-dock.dce-has-count .dce-dot {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  background:
+    linear-gradient(145deg, rgba(144, 188, 255, 0.44) 0%, rgba(92, 114, 255, 0.4) 100%),
+    rgba(16, 20, 34, 0.84);
+  border-color: rgba(196, 224, 255, 0.62);
+  box-shadow:
+    0 8px 22px rgba(56, 92, 240, 0.44),
+    inset 0 1px 1px rgba(255, 255, 255, 0.65);
+}
+
+.dce-dock.dce-has-count .dce-dot-count {
+  display: inline-block;
+}
+
+.dce-dot-hit:hover .dce-dot,
+.dce-dock.dce-open .dce-dot {
+  transform: scale(1.12);
+  border-color: rgba(255, 255, 255, 0.68);
+  box-shadow:
+    0 8px 24px rgba(105, 145, 255, 0.42),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.85);
+}
+
+/* ============================================================================
+ * 4. Expanded Liquid Glass Panel (Hidden Until Dot Hover)
+ * ========================================================================== */
+
+.dce-panel {
+  position: relative;
+  width: 256px;
+  padding: 13px 14px 12px;
+  border-radius: 22px;
+  color: rgba(255, 255, 255, 0.96);
+  background:
+    linear-gradient(
+      152deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.03) 44%,
+      rgba(148, 192, 255, 0.08) 100%
+    ),
+    rgba(14, 17, 26, 0.82);
+  -webkit-backdrop-filter: blur(36px) saturate(190%) brightness(1.04);
+  backdrop-filter: blur(36px) saturate(190%) brightness(1.04);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 24px 54px rgba(0, 0, 0, 0.62),
+    0 4px 14px rgba(0, 0, 0, 0.36),
+    0 0 0 0.5px rgba(255, 255, 255, 0.12),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.34),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.9);
+  transform-origin: bottom right;
+  transition:
+    opacity 0.2s ease,
+    transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.2s ease;
+}
+
+.dce-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    115% 48% at 50% -14%,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.03) 45%,
+    transparent 68%
+  );
+  pointer-events: none;
+}
+
+.dce-dock.dce-open .dce-panel,
+.dce-dock:hover .dce-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.dce-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dce-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dce-orb-mini {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #9ac5ff 55%, #6378ff 100%);
+  box-shadow: 0 0 10px rgba(138, 180, 255, 0.75);
+}
+
+.dce-title {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.dce-header-right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dce-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.dce-pill.dce-badge-active {
+  background: linear-gradient(135deg, rgba(130, 178, 255, 0.34), rgba(99, 120, 255, 0.28));
+  border-color: rgba(182, 214, 255, 0.45);
+  color: #ffffff;
+}
+
+.dce-clear-btn {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 148, 156, 0.3);
+  background: rgba(255, 110, 124, 0.16);
+  color: rgba(255, 214, 218, 0.95);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.dce-clear-btn:hover {
+  background: rgba(255, 110, 124, 0.3);
+  border-color: rgba(255, 168, 176, 0.55);
+}
+
+.dce-clear-btn:active {
+  transform: scale(0.95);
+}
+
+.dce-actions {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.dce-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.dce-btn {
+  position: relative;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.13) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  color: rgba(255, 255, 255, 0.94);
+  padding: 8px 11px;
+  border-radius: 13px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.16s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.dce-btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.dce-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+.dce-btn:not(:disabled):hover {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.24) 0%,
+    rgba(255, 255, 255, 0.11) 100%
+  );
+  border-color: rgba(255, 255, 255, 0.38);
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.dce-btn:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.dce-btn-forward {
+  justify-content: flex-start;
+  padding: 9px 12px;
+}
+
+.dce-btn-forward.dce-btn-forward-ready {
+  background: linear-gradient(
+    135deg,
+    rgba(92, 214, 180, 0.34) 0%,
+    rgba(56, 168, 224, 0.3) 100%
+  );
+  border-color: rgba(154, 240, 220, 0.48);
+  box-shadow:
+    0 6px 18px rgba(48, 180, 170, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.dce-btn-forward.dce-btn-forward-ready:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(108, 226, 194, 0.46) 0%,
+    rgba(72, 184, 240, 0.42) 100%
+  );
+  border-color: rgba(190, 250, 236, 0.72);
+}
+
+.dce-btn-primary {
+  justify-content: flex-start;
+  padding: 9px 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(138, 178, 255, 0.34) 0%,
+    rgba(96, 118, 255, 0.28) 100%
+  );
+  border-color: rgba(186, 214, 255, 0.38);
+  box-shadow:
+    0 6px 18px rgba(84, 112, 255, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.dce-btn-primary:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(154, 192, 255, 0.48) 0%,
+    rgba(108, 130, 255, 0.42) 100%
+  );
+  border-color: rgba(212, 232, 255, 0.62);
+}
+
+.dce-btn-tag {
+  margin-left: auto;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.dce-toggle-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.dce-toggle-row:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.dce-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 550;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.dce-toggle-label svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.82;
+}
+
+.dce-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 34px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.dce-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.dce-switch-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: background 0.22s ease, border-color 0.22s ease;
+}
+
+.dce-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #e6eeff 100%);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dce-switch input:checked + .dce-switch-track {
+  background: linear-gradient(135deg, rgba(122, 184, 255, 0.85), rgba(96, 122, 255, 0.85));
+  border-color: rgba(196, 224, 255, 0.65);
+}
+
+.dce-switch input:checked + .dce-switch-track::after {
+  transform: translateX(14px);
+}
+
+.dce-footer {
+  position: relative;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: center;
+  line-height: 1.3;
+  transition: color 0.18s ease;
+}
+
+.dce-footer.dce-status-ok {
+  color: #86efac;
+  font-weight: 600;
+}
+
+.dce-footer.dce-status-error {
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+/* ============================================================================
+ * 5. Multi-Forward Banner inside Discord's Native Forward Dialog
+ * ========================================================================== */
+
+.dce-forward-modal-banner {
+  margin: 10px 16px 2px;
+  padding: 8px 12px;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ecfdf5;
+  background:
+    linear-gradient(135deg, rgba(92, 214, 180, 0.24) 0%, rgba(56, 168, 224, 0.18) 100%),
+    rgba(14, 22, 30, 0.86);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(154, 240, 220, 0.42);
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.dce-forward-modal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #6ee7b7;
+  box-shadow: 0 0 10px rgba(110, 231, 183, 0.85);
+  flex-shrink: 0;
+}
