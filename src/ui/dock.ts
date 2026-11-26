@@ -133,7 +133,7 @@ export class LiquidGlassDock {
               <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
                 <path d="M2.5 9H5.25L7 4.25L10.25 13.75L12 9H15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              Hide activity
+              Hide members & activity
             </span>
             <span class="dce-switch">
               <input type="checkbox" id="dce-toggle-activity" checked />

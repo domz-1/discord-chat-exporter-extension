@@ -21,8 +21,10 @@ html[data-dce-hide-muted="true"] li[class*="channel_"][class*="muted_"] {
   display: none !important;
 }
 
-/* Hide Activity section in server Members sidebar & Active Now column on Friends page */
+/* Hide entire right-hand Members/Online/Activity sidebar & Active Now column */
 html[data-dce-hide-activity="true"] [data-dce-activity="true"],
+html[data-dce-hide-activity="true"] div:has(> aside[class*="membersWrap_"]),
+html[data-dce-hide-activity="true"] aside[class*="membersWrap_"],
 html[data-dce-hide-activity="true"] h3[class*="membersGroup_"]:has([class*="headerContainer_"]),
 html[data-dce-hide-activity="true"] [class*="nowPlayingColumn_"] {
   display: none !important;
@@ -34,6 +36,11 @@ html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] {
   direction: rtl !important;
   text-align: right !important;
   unicode-bidi: plaintext !important;
+  /* Counteract Discord's logical margin-inline-start: -72px which clips RTL text on the right */
+  margin-inline-start: 0 !important;
+  padding-inline-start: 0 !important;
+  margin-right: 0 !important;
+  padding-right: 0 !important;
 }
 
 /* Keep code blocks LTR inside RTL Arabic messages */
@@ -46,12 +53,13 @@ html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] [class*="codeContainer_"]
   unicode-bidi: isolate !important;
 }
 
-/* Keep inline code & URLs isolated cleanly inside RTL prose */
-html[data-dce-rtl-arabic="true"] [class*="markupRtl_"] code.inline,
-html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] code.inline,
+/* Keep inline code & URLs strictly LTR & isolated cleanly inside RTL prose */
+html[data-dce-rtl-arabic="true"] [class*="markupRtl_"] code,
+html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] code,
 html[data-dce-rtl-arabic="true"] [class*="markupRtl_"] a,
 html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] a {
-  unicode-bidi: isolate;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
 }
 
 /* Align bullet/numbered lists on the right inside RTL Arabic messages */
