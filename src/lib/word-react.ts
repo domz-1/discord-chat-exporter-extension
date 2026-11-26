@@ -17,52 +17,55 @@ const ARABIC_DIGIT_MAP: Record<string, string> = {
 const keycap = (ch: string) => `${ch}\uFE0F\u20E3`;
 
 /**
- * Blue-only Discord Twemoji candidates for all English letters (A-Z),
- * digits (0-9), and blue keycap symbols — no red/non-blue fallbacks.
+ * Blue-first candidates for all English letters (A-Z), digits (0-9), and symbols,
+ * with visual fallbacks when a letter/digit repeats on the same message.
  */
 const CHAR_EMOJI_CANDIDATES: Record<string, string[]> = {
-  A: ['\u{1F1E6}'],
-  B: ['\u{1F1E7}'],
-  C: ['\u{1F1E8}'],
+  A: ['\u{1F1E6}', '\u{1F170}\uFE0F'],
+  B: ['\u{1F1E7}', '\u{1F171}\uFE0F'],
+  C: ['\u{1F1E8}', '\u00A9\uFE0F'],
   D: ['\u{1F1E9}'],
   E: ['\u{1F1EA}', keycap('3')],
   F: ['\u{1F1EB}'],
   G: ['\u{1F1EC}'],
-  H: ['\u{1F1ED}'],
+  H: ['\u{1F1ED}', '\u2653'],
   I: ['\u{1F1EE}', '\u2139\uFE0F', keycap('1')],
   J: ['\u{1F1EF}'],
   K: ['\u{1F1F0}'],
   L: ['\u{1F1F1}'],
   M: ['\u{1F1F2}', '\u24C2\uFE0F'],
   N: ['\u{1F1F3}'],
-  O: ['\u{1F1F4}', keycap('0')],
+  O: ['\u{1F1F4}', keycap('0'), '\u{1F17E}\uFE0F', '\u2B55'],
   P: ['\u{1F1F5}', '\u{1F17F}\uFE0F'],
   Q: ['\u{1F1F6}'],
-  R: ['\u{1F1F7}'],
-  S: ['\u{1F1F8}', keycap('5')],
-  T: ['\u{1F1F9}'],
+  R: ['\u{1F1F7}', '\u00AE\uFE0F'],
+  S: ['\u{1F1F8}', keycap('5'), '\u{1F4B2}'],
+  T: ['\u{1F1F9}', '\u271D\uFE0F'],
   U: ['\u{1F1FA}'],
-  V: ['\u{1F1FB}'],
+  V: ['\u{1F1FB}', '\u270C\uFE0F'],
   W: ['\u{1F1FC}'],
-  X: ['\u{1F1FD}'],
+  X: ['\u{1F1FD}', '\u274C', '\u2716\uFE0F'],
   Y: ['\u{1F1FE}'],
   Z: ['\u{1F1FF}', '\u{1F4A4}'],
 
-  '0': [keycap('0'), '\u{1F1F4}'],
-  '1': [keycap('1'), '\u{1F1EE}', '\u2139\uFE0F'],
-  '2': [keycap('2')],
+  '0': [keycap('0'), '\u{1F1F4}', '\u{1F17E}\uFE0F', '\u2B55'],
+  '1': [keycap('1'), '\u{1F1EE}', '\u2139\uFE0F', '\u261D\uFE0F'],
+  '2': [keycap('2'), '\u270C\uFE0F'],
   '3': [keycap('3')],
   '4': [keycap('4')],
   '5': [keycap('5')],
   '6': [keycap('6')],
   '7': [keycap('7')],
-  '8': [keycap('8')],
+  '8': [keycap('8'), '\u{1F3B1}'],
   '9': [keycap('9')],
 
+  '!': ['\u2757', '\u2755', '\u203C\uFE0F'],
+  '?': ['\u2753', '\u2754'],
   '#': [keycap('#')],
   '*': [keycap('*')],
-  '!': ['\u2755'],
-  '?': ['\u2754'],
+  '+': ['\u2795'],
+  '-': ['\u2796'],
+  '$': ['\u{1F4B2}'],
 };
 
 const EMOJI_GRAPHEME_RE = /\p{Extended_Pictographic}/u;
@@ -80,8 +83,8 @@ function splitGraphemes(text: string): string[] {
 }
 
 /**
- * Converts any word (English letters, digits 0-9, Arabic digits ٠-٩, blue symbols, or direct emojis)
- * into an ordered, deduplicated list of blue Discord reaction emojis (max 20).
+ * Converts any word (English letters, digits 0-9, Arabic digits ٠-٩, symbols, or direct emojis)
+ * into an ordered, deduplicated list of Discord reaction emojis (blue-first, with fallbacks on repeats).
  */
 export function wordToReactionEmojis(word: string): string[] {
   const normalized = normalizeArabicNumerals(word || '').trim();

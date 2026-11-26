@@ -6,7 +6,7 @@ import {
   wordToReactionEmojis,
 } from '../src/lib/word-react';
 
-describe('word-to-emoji reaction mapper (blue-only letters & digits)', () => {
+describe('word-to-emoji reaction mapper (blue-first with repeat fallbacks)', () => {
   it('supports all 26 English letters A-Z case-insensitively as blue regional indicators', () => {
     const firstHalf = wordToReactionEmojis('abcdefghijklm');
     const secondHalf = wordToReactionEmojis('NOPQRSTUVWXYZ');
@@ -24,34 +24,42 @@ describe('word-to-emoji reaction mapper (blue-only letters & digits)', () => {
     expect(digits[9]).toBe('9\uFE0F\u20E3');
   });
 
-  it('converts Eastern Arabic numerals to blue keycap reactions', () => {
+  it('converts Eastern Arabic numerals and falls back cleanly on repeated A', () => {
     expect(normalizeArabicNumerals('٠١٢٣٤٥٦٧٨٩')).toBe('0123456789');
-    expect(wordToReactionEmojis('A٧O0')).toEqual([
+    expect(wordToReactionEmojis('A٧A')).toEqual([
       '\u{1F1E6}',
       '7\uFE0F\u20E3',
-      '\u{1F1F4}',
-      '0\uFE0F\u20E3',
+      '\u{1F170}\uFE0F',
     ]);
   });
 
-  it('uses ONLY blue fallbacks for repeated letters and never emits red A/B/O emojis', () => {
-    // BOOK uses blue O + blue 0 (no red 🅾️)
+  it('prefers blue fallbacks first, then visual fallbacks for repeated letters', () => {
+    // BOOK stays all-blue using 0️⃣ for 2nd O
     expect(wordToReactionEmojis('BOOK')).toEqual([
       '\u{1F1E7}',
       '\u{1F1F4}',
       '0\uFE0F\u20E3',
       '\u{1F1F0}',
     ]);
-    // PP uses blue P + blue 🅿️
-    expect(wordToReactionEmojis('PP')).toEqual(['\u{1F1F5}', '\u{1F17F}\uFE0F']);
-    // Repeated A skips red 🅰️ and stays blue-only
-    const repeated = wordToReactionEmojis('A7A');
-    expect(repeated).toEqual(['\u{1F1E6}', '7\uFE0F\u20E3']);
-    expect(repeated).not.toContain('\u{1F170}\uFE0F');
+    // 3rd O falls back to 🅾️
+    expect(wordToReactionEmojis('OOO')).toEqual([
+      '\u{1F1F4}',
+      '0\uFE0F\u20E3',
+      '\u{1F17E}\uFE0F',
+    ]);
+    // Repeated A uses 🅰️
+    expect(wordToReactionEmojis('A7A')).toEqual([
+      '\u{1F1E6}',
+      '7\uFE0F\u20E3',
+      '\u{1F170}\uFE0F',
+    ]);
+    // Never emits duplicate identical emojis
+    const res = wordToReactionEmojis('AAAAAAA');
+    expect(new Set(res).size).toBe(res.length);
   });
 
   it('passes through direct emojis and caps at Discord limit (20)', () => {
-    expect(wordToReactionEmojis('GG 💙')).toEqual(['\u{1F1EC}', '💙']);
+    expect(wordToReactionEmojis('GG! 🔥')).toEqual(['\u{1F1EC}', '\u2757', '🔥']);
     const longInput = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     expect(wordToReactionEmojis(longInput).length).toBeLessThanOrEqual(MAX_REACTIONS_PER_MESSAGE);
   });
