@@ -1,4 +1,21 @@
 /* ============================================================================
+ * 0. Use System Font (`system-ui`) for Arabic & Non-Latin Fallback on Discord
+ *    Discord's default stack skips `system-ui`, falling back to fontconfig's
+ *    `sans-serif` instead of the OS desktop font. Placing `system-ui` right
+ *    after `"gg sans"` keeps English in gg sans and renders Arabic in the
+ *    user's exact OS system font across messages, composer, replies, and DMs.
+ * ========================================================================== */
+
+:root,
+html,
+body,
+.theme-dark,
+.theme-light {
+  --font-primary: "gg sans", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+  --font-display: "gg sans", system-ui, -apple-system, "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif !important;
+}
+
+/* ============================================================================
  * 1. Hide Muted Channels & DMs + Hide Activity Sidebar + Arabic RTL Content
  *    Uses `data-dce-*` attributes on `<html>` (Discord overwrites html.className)
  * ========================================================================== */
