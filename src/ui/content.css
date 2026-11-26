@@ -1,6 +1,6 @@
 /* ============================================================================
- * 1. Hide Muted Server Channels, Categories & Direct Messages
- *    Uses `data-dce-hide-muted="true"` because Discord overwrites html.className
+ * 1. Hide Muted Channels & DMs + Hide Activity Sidebar + Arabic RTL Content
+ *    Uses `data-dce-*` attributes on `<html>` (Discord overwrites html.className)
  * ========================================================================== */
 
 html[data-dce-hide-muted="true"] [data-dce-muted="true"],
@@ -19,6 +19,51 @@ html[data-dce-hide-muted="true"] ul[aria-label="Direct Messages"] li:has([class*
 html[data-dce-hide-muted="true"] li[class*="channel_"]:has([class*="muted_"]),
 html[data-dce-hide-muted="true"] li[class*="channel_"][class*="muted_"] {
   display: none !important;
+}
+
+/* Hide Activity section in server Members sidebar & Active Now column on Friends page */
+html[data-dce-hide-activity="true"] [data-dce-activity="true"],
+html[data-dce-hide-activity="true"] h3[class*="membersGroup_"]:has([class*="headerContainer_"]),
+html[data-dce-hide-activity="true"] [class*="nowPlayingColumn_"] {
+  display: none !important;
+}
+
+/* Right-align Arabic & mixed Arabic+English message content cleanly */
+html[data-dce-rtl-arabic="true"] [class*="markupRtl_"],
+html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] {
+  direction: rtl !important;
+  text-align: right !important;
+  unicode-bidi: plaintext !important;
+}
+
+/* Keep code blocks LTR inside RTL Arabic messages */
+html[data-dce-rtl-arabic="true"] [class*="markupRtl_"] pre,
+html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] pre,
+html[data-dce-rtl-arabic="true"] [class*="markupRtl_"] [class*="codeContainer_"],
+html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] [class*="codeContainer_"] {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate !important;
+}
+
+/* Keep inline code & URLs isolated cleanly inside RTL prose */
+html[data-dce-rtl-arabic="true"] [class*="markupRtl_"] code.inline,
+html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] code.inline,
+html[data-dce-rtl-arabic="true"] [class*="markupRtl_"] a,
+html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] a {
+  unicode-bidi: isolate;
+}
+
+/* Align bullet/numbered lists on the right inside RTL Arabic messages */
+html[data-dce-rtl-arabic="true"] [class*="markupRtl_"] ul,
+html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] ul,
+html[data-dce-rtl-arabic="true"] [class*="markupRtl_"] ol,
+html[data-dce-rtl-arabic="true"] [data-dce-rtl="true"] ol {
+  direction: rtl !important;
+  text-align: right !important;
+  margin-left: 0 !important;
+  margin-right: 16px !important;
+  padding-left: 0 !important;
 }
 
 /* ============================================================================
@@ -640,14 +685,21 @@ body.dce-has-selection .dce-msg-item:hover > .dce-select-btn {
   box-shadow: 0 0 0 2px rgba(250, 204, 128, 0.18);
 }
 
+.dce-toggles-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
 .dce-toggle-row {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 13px;
+  padding: 6.5px 10px;
+  border-radius: 11px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;

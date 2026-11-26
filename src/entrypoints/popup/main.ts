@@ -1,8 +1,12 @@
 import {
+  getHideActivitySetting,
   getHideMutedSetting,
   getReactWordSetting,
+  getRtlArabicSetting,
+  setHideActivitySetting,
   setHideMutedSetting,
   setReactWordSetting,
+  setRtlArabicSetting,
 } from '../../lib/storage';
 import type { ExtensionStateResponse, ExtractResponse } from '../../lib/types';
 import { wordToReactionEmojis } from '../../lib/word-react';
@@ -86,13 +90,19 @@ function updateWordPreview(word: string) {
 
 async function initPopup() {
   const toggleEl = document.getElementById('pop-toggle-muted') as HTMLInputElement | null;
+  const activityToggleEl = document.getElementById('pop-toggle-activity') as HTMLInputElement | null;
+  const rtlToggleEl = document.getElementById('pop-toggle-rtl') as HTMLInputElement | null;
   const wordInput = document.getElementById('pop-react-word') as HTMLInputElement | null;
 
-  const [savedMuted, savedWord] = await Promise.all([
+  const [savedMuted, savedActivity, savedRtl, savedWord] = await Promise.all([
     getHideMutedSetting(),
+    getHideActivitySetting(),
+    getRtlArabicSetting(),
     getReactWordSetting(),
   ]);
   if (toggleEl) toggleEl.checked = savedMuted;
+  if (activityToggleEl) activityToggleEl.checked = savedActivity;
+  if (rtlToggleEl) rtlToggleEl.checked = savedRtl;
   if (wordInput) {
     wordInput.value = savedWord;
     updateWordPreview(savedWord);
@@ -103,6 +113,12 @@ async function initPopup() {
     updateSelectionUI(state.selectedCount || 0);
     if (toggleEl && typeof state.hideMutedChannels === 'boolean') {
       toggleEl.checked = state.hideMutedChannels;
+    }
+    if (activityToggleEl && typeof state.hideActivity === 'boolean') {
+      activityToggleEl.checked = state.hideActivity;
+    }
+    if (rtlToggleEl && typeof state.rtlArabic === 'boolean') {
+      rtlToggleEl.checked = state.rtlArabic;
     }
     if (wordInput && typeof state.reactWord === 'string') {
       wordInput.value = state.reactWord;
@@ -122,6 +138,20 @@ async function initPopup() {
     await setHideMutedSetting(enabled);
     await sendToDiscord({ action: 'setHideMuted', enabled }, true);
     setStatus(enabled ? 'Muted channels hidden' : 'Muted channels shown');
+  });
+
+  activityToggleEl?.addEventListener('change', async (e) => {
+    const enabled = (e.target as HTMLInputElement).checked;
+    await setHideActivitySetting(enabled);
+    await sendToDiscord({ action: 'setHideActivity', enabled }, true);
+    setStatus(enabled ? 'Activity sidebar hidden' : 'Activity sidebar shown');
+  });
+
+  rtlToggleEl?.addEventListener('change', async (e) => {
+    const enabled = (e.target as HTMLInputElement).checked;
+    await setRtlArabicSetting(enabled);
+    await sendToDiscord({ action: 'setRtlArabic', enabled }, true);
+    setStatus(enabled ? 'Arabic RTL enabled' : 'Arabic RTL disabled');
   });
 
   document.getElementById('pop-clear')?.addEventListener('click', async () => {

@@ -1,35 +1,40 @@
-import { STORAGE_KEY_HIDE_MUTED, STORAGE_KEY_REACT_WORD } from './types';
+import {
+  STORAGE_KEY_HIDE_ACTIVITY,
+  STORAGE_KEY_HIDE_MUTED,
+  STORAGE_KEY_REACT_WORD,
+  STORAGE_KEY_RTL_ARABIC,
+} from './types';
 import { DEFAULT_REACT_WORD } from './word-react';
 
-export async function getHideMutedSetting(): Promise<boolean> {
-  if (typeof browser === 'undefined' || !browser.storage?.local) return true;
+async function getBooleanSetting(key: string, defaultValue: boolean): Promise<boolean> {
+  if (typeof browser === 'undefined' || !browser.storage?.local) return defaultValue;
   try {
-    const result = await browser.storage.local.get(STORAGE_KEY_HIDE_MUTED);
-    const val = (result as Record<string, unknown>)?.[STORAGE_KEY_HIDE_MUTED];
-    return typeof val === 'boolean' ? val : true;
+    const result = await browser.storage.local.get(key);
+    const val = (result as Record<string, unknown>)?.[key];
+    return typeof val === 'boolean' ? val : defaultValue;
   } catch {
-    return true;
+    return defaultValue;
   }
 }
 
-export async function setHideMutedSetting(enabled: boolean): Promise<void> {
+async function setBooleanSetting(key: string, enabled: boolean): Promise<void> {
   if (typeof browser === 'undefined' || !browser.storage?.local) return;
   try {
-    await browser.storage.local.set({ [STORAGE_KEY_HIDE_MUTED]: Boolean(enabled) });
+    await browser.storage.local.set({ [key]: Boolean(enabled) });
   } catch {
     // Ignore storage write errors in restricted contexts
   }
 }
 
-export function onHideMutedSettingChanged(callback: (enabled: boolean) => void): () => void {
+function onBooleanSettingChanged(key: string, callback: (enabled: boolean) => void): () => void {
   if (typeof browser === 'undefined' || !browser.storage?.onChanged) return () => {};
 
   const listener = (
     changes: Record<string, { newValue?: unknown }>,
     areaName: string,
   ) => {
-    if (areaName === 'local' && changes[STORAGE_KEY_HIDE_MUTED]) {
-      const val = changes[STORAGE_KEY_HIDE_MUTED].newValue;
+    if (areaName === 'local' && changes[key]) {
+      const val = changes[key].newValue;
       if (typeof val === 'boolean') {
         callback(val);
       }
@@ -39,6 +44,23 @@ export function onHideMutedSettingChanged(callback: (enabled: boolean) => void):
   browser.storage.onChanged.addListener(listener);
   return () => browser.storage.onChanged.removeListener(listener);
 }
+
+export const getHideMutedSetting = () => getBooleanSetting(STORAGE_KEY_HIDE_MUTED, true);
+export const setHideMutedSetting = (enabled: boolean) => setBooleanSetting(STORAGE_KEY_HIDE_MUTED, enabled);
+export const onHideMutedSettingChanged = (cb: (enabled: boolean) => void) =>
+  onBooleanSettingChanged(STORAGE_KEY_HIDE_MUTED, cb);
+
+export const getHideActivitySetting = () => getBooleanSetting(STORAGE_KEY_HIDE_ACTIVITY, true);
+export const setHideActivitySetting = (enabled: boolean) =>
+  setBooleanSetting(STORAGE_KEY_HIDE_ACTIVITY, enabled);
+export const onHideActivitySettingChanged = (cb: (enabled: boolean) => void) =>
+  onBooleanSettingChanged(STORAGE_KEY_HIDE_ACTIVITY, cb);
+
+export const getRtlArabicSetting = () => getBooleanSetting(STORAGE_KEY_RTL_ARABIC, true);
+export const setRtlArabicSetting = (enabled: boolean) =>
+  setBooleanSetting(STORAGE_KEY_RTL_ARABIC, enabled);
+export const onRtlArabicSettingChanged = (cb: (enabled: boolean) => void) =>
+  onBooleanSettingChanged(STORAGE_KEY_RTL_ARABIC, cb);
 
 export async function getReactWordSetting(): Promise<string> {
   if (typeof browser === 'undefined' || !browser.storage?.local) return DEFAULT_REACT_WORD;

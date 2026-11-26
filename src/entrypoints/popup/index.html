@@ -298,13 +298,19 @@
       box-shadow: 0 0 0 2px rgba(250, 204, 128, 0.18);
     }
 
+    .toggles-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
     .toggle-row {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 10px;
-      border-radius: 13px;
+      padding: 7px 10px;
+      border-radius: 12px;
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.12);
       cursor: pointer;
@@ -458,19 +464,47 @@
       />
     </div>
 
-    <label class="toggle-row" for="pop-toggle-muted">
-      <span class="toggle-label">
-        <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
-          <path d="M2.5 2.5L15.5 15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          <path d="M7.5 4.2A6.5 6.5 0 0 1 15.75 9a6.8 6.8 0 0 1-1.9 2.65M11.1 11.1A2.75 2.75 0 0 1 6.9 6.9M4.4 6.1A6.8 6.8 0 0 0 2.25 9a6.5 6.5 0 0 0 8.2 4.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        Hide muted channels
-      </span>
-      <span class="switch">
-        <input type="checkbox" id="pop-toggle-muted" checked />
-        <span class="switch-track"></span>
-      </span>
-    </label>
+    <div class="toggles-group">
+      <label class="toggle-row" for="pop-toggle-muted">
+        <span class="toggle-label">
+          <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M2.5 2.5L15.5 15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M7.5 4.2A6.5 6.5 0 0 1 15.75 9a6.8 6.8 0 0 1-1.9 2.65M11.1 11.1A2.75 2.75 0 0 1 6.9 6.9M4.4 6.1A6.8 6.8 0 0 0 2.25 9a6.5 6.5 0 0 0 8.2 4.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          Hide muted channels
+        </span>
+        <span class="switch">
+          <input type="checkbox" id="pop-toggle-muted" checked />
+          <span class="switch-track"></span>
+        </span>
+      </label>
+
+      <label class="toggle-row" for="pop-toggle-activity">
+        <span class="toggle-label">
+          <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M2.5 9H5.25L7 4.25L10.25 13.75L12 9H15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Hide activity sidebar
+        </span>
+        <span class="switch">
+          <input type="checkbox" id="pop-toggle-activity" checked />
+          <span class="switch-track"></span>
+        </span>
+      </label>
+
+      <label class="toggle-row" for="pop-toggle-rtl">
+        <span class="toggle-label">
+          <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M3 4.5H15M6 9H15M4.5 13.5H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          Arabic RTL alignment
+        </span>
+        <span class="switch">
+          <input type="checkbox" id="pop-toggle-rtl" checked />
+          <span class="switch-track"></span>
+        </span>
+      </label>
+    </div>
 
     <div class="status" id="pop-status">Ready</div>
   </div>

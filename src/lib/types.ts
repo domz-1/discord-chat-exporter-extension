@@ -52,6 +52,8 @@ export interface ExtractResponse {
 export interface ExtensionStateResponse {
   selectedCount: number;
   hideMutedChannels: boolean;
+  hideActivity: boolean;
+  rtlArabic: boolean;
   reactWord: string;
 }
 
@@ -83,6 +85,8 @@ export const MESSAGE_KEYS: (keyof DiscordMessage)[] = [
 ];
 
 export const STORAGE_KEY_HIDE_MUTED = 'dce_hide_muted_channels';
+export const STORAGE_KEY_HIDE_ACTIVITY = 'dce_hide_activity';
+export const STORAGE_KEY_RTL_ARABIC = 'dce_rtl_arabic';
 export const STORAGE_KEY_REACT_WORD = 'dce_react_word';
 export const EVENT_ARM_FORWARD = 'dce:arm-forward';
 export const EVENT_DISARM_FORWARD = 'dce:disarm-forward';

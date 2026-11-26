@@ -6,12 +6,16 @@ export interface DockCallbacks {
   onForward: () => void;
   onClear: () => void;
   onToggleMuted: (enabled: boolean) => void;
+  onToggleActivity: (enabled: boolean) => void;
+  onToggleRtlArabic: (enabled: boolean) => void;
   onReactWordChange: (word: string) => void;
 }
 
 export interface DockViewState {
   selectedCount: number;
   hideMutedChannels: boolean;
+  hideActivity: boolean;
+  rtlArabic: boolean;
   reactWord: string;
   isForwarding?: boolean;
 }
@@ -23,6 +27,8 @@ export class LiquidGlassDock {
   private lastState: DockViewState = {
     selectedCount: 0,
     hideMutedChannels: true,
+    hideActivity: true,
+    rtlArabic: true,
     reactWord: DEFAULT_REACT_WORD,
   };
 
@@ -107,19 +113,47 @@ export class LiquidGlassDock {
           />
         </div>
 
-        <label class="dce-toggle-row" for="dce-toggle-muted">
-          <span class="dce-toggle-label">
-            <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <path d="M2.5 2.5L15.5 15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M7.5 4.2A6.5 6.5 0 0 1 15.75 9a6.8 6.8 0 0 1-1.9 2.65M11.1 11.1A2.75 2.75 0 0 1 6.9 6.9M4.4 6.1A6.8 6.8 0 0 0 2.25 9a6.5 6.5 0 0 0 8.2 4.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-            Hide muted channels
-          </span>
-          <span class="dce-switch">
-            <input type="checkbox" id="dce-toggle-muted" checked />
-            <span class="dce-switch-track"></span>
-          </span>
-        </label>
+        <div class="dce-toggles-group">
+          <label class="dce-toggle-row" for="dce-toggle-muted">
+            <span class="dce-toggle-label">
+              <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <path d="M2.5 2.5L15.5 15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M7.5 4.2A6.5 6.5 0 0 1 15.75 9a6.8 6.8 0 0 1-1.9 2.65M11.1 11.1A2.75 2.75 0 0 1 6.9 6.9M4.4 6.1A6.8 6.8 0 0 0 2.25 9a6.5 6.5 0 0 0 8.2 4.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              Hide muted
+            </span>
+            <span class="dce-switch">
+              <input type="checkbox" id="dce-toggle-muted" checked />
+              <span class="dce-switch-track"></span>
+            </span>
+          </label>
+
+          <label class="dce-toggle-row" for="dce-toggle-activity">
+            <span class="dce-toggle-label">
+              <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <path d="M2.5 9H5.25L7 4.25L10.25 13.75L12 9H15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Hide activity
+            </span>
+            <span class="dce-switch">
+              <input type="checkbox" id="dce-toggle-activity" checked />
+              <span class="dce-switch-track"></span>
+            </span>
+          </label>
+
+          <label class="dce-toggle-row" for="dce-toggle-rtl">
+            <span class="dce-toggle-label">
+              <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <path d="M3 4.5H15M6 9H15M4.5 13.5H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              Arabic RTL
+            </span>
+            <span class="dce-switch">
+              <input type="checkbox" id="dce-toggle-rtl" checked />
+              <span class="dce-switch-track"></span>
+            </span>
+          </label>
+        </div>
 
         <div class="dce-footer" id="exporter-status">Hover msgs to select · Shift+Click range</div>
       </div>
@@ -189,13 +223,19 @@ export class LiquidGlassDock {
     dock.querySelector('#dce-toggle-muted')?.addEventListener('change', (e) => {
       callbacks.onToggleMuted((e.target as HTMLInputElement).checked);
     });
+    dock.querySelector('#dce-toggle-activity')?.addEventListener('change', (e) => {
+      callbacks.onToggleActivity((e.target as HTMLInputElement).checked);
+    });
+    dock.querySelector('#dce-toggle-rtl')?.addEventListener('change', (e) => {
+      callbacks.onToggleRtlArabic((e.target as HTMLInputElement).checked);
+    });
   }
 
   update(state: DockViewState): void {
     this.lastState = state;
     if (!this.root) return;
 
-    const { selectedCount, hideMutedChannels, isForwarding } = state;
+    const { selectedCount, hideMutedChannels, hideActivity, rtlArabic, isForwarding } = state;
     this.root.classList.toggle('dce-has-count', selectedCount > 0);
 
     const dotCount = this.root.querySelector<HTMLElement>('#dce-dot-count');
@@ -228,6 +268,16 @@ export class LiquidGlassDock {
     const mutedToggle = this.root.querySelector<HTMLInputElement>('#dce-toggle-muted');
     if (mutedToggle) {
       mutedToggle.checked = hideMutedChannels;
+    }
+
+    const activityToggle = this.root.querySelector<HTMLInputElement>('#dce-toggle-activity');
+    if (activityToggle) {
+      activityToggle.checked = hideActivity;
+    }
+
+    const rtlToggle = this.root.querySelector<HTMLInputElement>('#dce-toggle-rtl');
+    if (rtlToggle) {
+      rtlToggle.checked = rtlArabic;
     }
 
     const wordInput = this.root.querySelector<HTMLInputElement>('#dce-react-word-input');

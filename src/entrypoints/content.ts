@@ -1,5 +1,7 @@
 import '../ui/content.css';
 
+import { ActivitySidebarController } from '../lib/activity';
+import { ArabicRtlController } from '../lib/arabic-rtl';
 import {
   extractVisibleMessages,
   formatMessagesAsMarkdown,
@@ -8,12 +10,18 @@ import {
 } from '../lib/extractor';
 import { MutedChannelsController } from '../lib/muted';
 import {
+  getHideActivitySetting,
   getHideMutedSetting,
   getReactWordSetting,
+  getRtlArabicSetting,
+  onHideActivitySettingChanged,
   onHideMutedSettingChanged,
   onReactWordSettingChanged,
+  onRtlArabicSettingChanged,
+  setHideActivitySetting,
   setHideMutedSetting,
   setReactWordSetting,
+  setRtlArabicSetting,
 } from '../lib/storage';
 import { serializeToon } from '../lib/toon';
 import {
@@ -48,6 +56,8 @@ export default defineContentScript({
 
     const dock = new LiquidGlassDock();
     const mutedController = new MutedChannelsController(() => scheduleSync());
+    const activityController = new ActivitySidebarController();
+    const arabicRtlController = new ArabicRtlController();
 
     function applyReactWord(word: string) {
       reactWord = word;
@@ -105,6 +115,8 @@ export default defineContentScript({
       dock.update({
         selectedCount: selectionManager.getCount(),
         hideMutedChannels: mutedController.isEnabled(),
+        hideActivity: activityController.isEnabled(),
+        rtlArabic: arabicRtlController.isEnabled(),
         reactWord,
         isForwarding,
       });
@@ -367,13 +379,26 @@ export default defineContentScript({
         syncScheduled = false;
         selectionManager.decorateVisibleMessages();
         mutedController.scan();
+        activityController.scan();
+        arabicRtlController.scan();
       });
     }
 
-    // Initialize immediately with hideMuted ON (zero flicker), then hydrate saved settings
+    // Initialize immediately with defaults ON (zero flicker), then hydrate saved settings
     mutedController.setEnabled(true);
+    activityController.setEnabled(true);
+    arabicRtlController.setEnabled(true);
+
     void getHideMutedSetting().then((saved) => {
       mutedController.setEnabled(saved);
+      refreshDock();
+    });
+    void getHideActivitySetting().then((saved) => {
+      activityController.setEnabled(saved);
+      refreshDock();
+    });
+    void getRtlArabicSetting().then((saved) => {
+      arabicRtlController.setEnabled(saved);
       refreshDock();
     });
     void getReactWordSetting().then((savedWord) => {
@@ -393,6 +418,18 @@ export default defineContentScript({
         refreshDock();
         dock.showStatus(enabled ? 'Muted channels hidden' : 'Muted channels shown');
       },
+      onToggleActivity: (enabled) => {
+        activityController.setEnabled(enabled);
+        void setHideActivitySetting(enabled);
+        refreshDock();
+        dock.showStatus(enabled ? 'Activity sidebar hidden' : 'Activity sidebar shown');
+      },
+      onToggleRtlArabic: (enabled) => {
+        arabicRtlController.setEnabled(enabled);
+        void setRtlArabicSetting(enabled);
+        refreshDock();
+        dock.showStatus(enabled ? 'Arabic RTL enabled' : 'Arabic RTL disabled');
+      },
       onReactWordChange: (word) => {
         reactWord = word;
         selectionManager.setReactWord(word);
@@ -402,6 +439,8 @@ export default defineContentScript({
 
     selectionManager.decorateVisibleMessages();
     mutedController.scan();
+    activityController.scan();
+    arabicRtlController.scan();
     refreshDock();
 
     const bodyObserver = new MutationObserver(() => scheduleSync());
@@ -409,6 +448,14 @@ export default defineContentScript({
 
     const unsubStorage = onHideMutedSettingChanged((enabled) => {
       mutedController.setEnabled(enabled);
+      refreshDock();
+    });
+    const unsubActivity = onHideActivitySettingChanged((enabled) => {
+      activityController.setEnabled(enabled);
+      refreshDock();
+    });
+    const unsubRtl = onRtlArabicSettingChanged((enabled) => {
+      arabicRtlController.setEnabled(enabled);
       refreshDock();
     });
     const unsubReactWord = onReactWordSettingChanged((word) => {
@@ -424,6 +471,8 @@ export default defineContentScript({
         sendResponse({
           selectedCount: selectionManager.getCount(),
           hideMutedChannels: mutedController.isEnabled(),
+          hideActivity: activityController.isEnabled(),
+          rtlArabic: arabicRtlController.isEnabled(),
           reactWord,
         });
       } else if (request.action === 'extract') {
@@ -448,6 +497,18 @@ export default defineContentScript({
         void setHideMutedSetting(enabled);
         refreshDock();
         sendResponse({ hideMutedChannels: mutedController.isEnabled() });
+      } else if (request.action === 'setHideActivity') {
+        const enabled = Boolean(request.enabled);
+        activityController.setEnabled(enabled);
+        void setHideActivitySetting(enabled);
+        refreshDock();
+        sendResponse({ hideActivity: activityController.isEnabled() });
+      } else if (request.action === 'setRtlArabic') {
+        const enabled = Boolean(request.enabled);
+        arabicRtlController.setEnabled(enabled);
+        void setRtlArabicSetting(enabled);
+        refreshDock();
+        sendResponse({ rtlArabic: arabicRtlController.isEnabled() });
       } else if (request.action === 'setReactWord') {
         const nextWord = typeof request.word === 'string' ? request.word : DEFAULT_REACT_WORD;
         applyReactWord(nextWord);
@@ -468,6 +529,8 @@ export default defineContentScript({
       cleanupForwardModalWatch();
       selectionManager.closeReactPopover();
       unsubStorage();
+      unsubActivity();
+      unsubRtl();
       unsubReactWord();
       document.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener(EVENT_FORWARD_PROGRESS, onForwardProgress);
